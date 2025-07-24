@@ -2,15 +2,36 @@ import Fastify from 'fastify';
 import staticPlugin from '@fastify/static';
 import path from 'path';
 import fetch from 'node-fetch';
-import pool from './db/pool.js';
+
+// Configuration et logging d'abord
 import { config } from './config.js';
 import { logger } from './utils/logger.js';
+
+// Database connection avec gestion d'erreur
+let pool;
+try {
+  const poolModule = await import('./db/pool.js');
+  pool = poolModule.default;
+  logger.info('✅ Pool de base de données initialisé');
+} catch (error) {
+  logger.error({ error }, '❌ Erreur initialisation pool de base de données');
+  throw error;
+}
+
+// Autres imports avec gestion d'erreurs
 import { authManager } from './auth.js';
 import { integrationsManager } from './integrations.js';
 import { chatManager } from './chat.js';
 import { agentManager } from './agent-manager.js';
 import { decrypt, encrypt } from './crypto.js';
-import './scheduler.js'; // Démarre le scheduler
+
+// Démarrer le scheduler seulement si tout va bien
+try {
+  await import('./scheduler.js');
+  logger.info('✅ Scheduler initialisé');
+} catch (error) {
+  logger.warn({ error }, '⚠️ Scheduler non disponible');
+}
 
 const app = Fastify({ logger: true });
 
@@ -58,12 +79,38 @@ app.register(staticPlugin, {
   prefix: '/'
 });
 
-// Route de santé
-app.get('/health', async () => ({ 
-  status: 'ok', 
-  timestamp: new Date().toISOString(),
-  version: '2.0.0'
-}));
+// Route de santé avec diagnostic complet
+app.get('/health', async (request, reply) => {
+  try {
+    // Test de connexion à la base de données
+    const dbTest = await pool.query('SELECT NOW() as current_time');
+    const dbConnected = !!dbTest.rows[0];
+    
+    const healthData = { 
+      status: 'ok',
+      service: 'FlowForge v2.1 - AI Agent Platform',
+      timestamp: new Date().toISOString(),
+      version: '2.1.0',
+      environment: config.nodeEnv,
+      database: {
+        connected: dbConnected,
+        timestamp: dbTest.rows[0]?.current_time
+      },
+      uptime: process.uptime(),
+      memory: process.memoryUsage(),
+      isRailway: config.isRailway
+    };
+    
+    reply.code(200).send(healthData);
+  } catch (error) {
+    logger.error({ error }, 'Health check failed');
+    reply.code(503).send({
+      status: 'unhealthy',
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
 
 // ===== ROUTES D'AUTHENTIFICATION =====
 
@@ -877,10 +924,31 @@ setInterval(async () => {
 // Démarrer le serveur
 async function start() {
   try {
-    await app.listen({ port: config.port, host: '0.0.0.0' });
-    logger.info(`Serveur FlowForge v2.0 démarré sur le port ${config.port}`);
+    // Configuration d'écoute pour Railway
+    const host = process.env.RAILWAY_STATIC_URL ? '0.0.0.0' : 'localhost';
+    const port = config.port;
+    
+    await app.listen({ 
+      port: port, 
+      host: host 
+    });
+    
+    logger.info({
+      port: port,
+      host: host,
+      environment: config.nodeEnv,
+      isRailway: config.isRailway
+    }, `🚀 FlowForge v2.1 démarré avec succès`);
+    
+    // Log des informations importantes pour le debugging
+    if (config.isRailway) {
+      logger.info('🚂 Application déployée sur Railway');
+      logger.info(`🔗 Health check disponible sur: /health`);
+    }
+    
   } catch (err) {
-    logger.error(err, 'Erreur de démarrage du serveur');
+    logger.error({ error: err }, '❌ Erreur critique de démarrage du serveur');
+    console.error('Failed to start server:', err);
     process.exit(1);
   }
 }
