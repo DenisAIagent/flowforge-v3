@@ -3,34 +3,40 @@ import staticPlugin from '@fastify/static';
 import path from 'path';
 import fetch from 'node-fetch';
 
-// Configuration et logging d'abord
+// Configuration et logging d'abord  
 import { config } from './config.js';
 import { logger } from './utils/logger.js';
 
-// Database connection avec gestion d'erreur
-let pool;
-try {
-  const poolModule = await import('./db/pool.js');
-  pool = poolModule.default;
-  logger.info('✅ Pool de base de données initialisé');
-} catch (error) {
-  logger.error({ error }, '❌ Erreur initialisation pool de base de données');
-  throw error;
-}
+// Log de démarrage
+logger.info(`🚀 Initialisation FlowForge v2.1 [${config.nodeEnv}]`);
 
-// Autres imports avec gestion d'erreurs
-import { authManager } from './auth.js';
-import { integrationsManager } from './integrations.js';
-import { chatManager } from './chat.js';
-import { agentManager } from './agent-manager.js';
-import { decrypt, encrypt } from './crypto.js';
+// Imports avec gestion d'erreur de fallback
+let pool, authManager, integrationsManager, chatManager, agentManager, decrypt, encrypt;
 
-// Démarrer le scheduler seulement si tout va bien
 try {
-  await import('./scheduler.js');
-  logger.info('✅ Scheduler initialisé');
+  const imports = await Promise.all([
+    import('./db/pool.js'),
+    import('./auth.js'),
+    import('./integrations.js'), 
+    import('./chat.js'),
+    import('./agent-manager.js'),
+    import('./crypto.js')
+  ]);
+  
+  pool = imports[0].default;
+  authManager = imports[1].authManager;
+  integrationsManager = imports[2].integrationsManager;
+  chatManager = imports[3].chatManager;
+  agentManager = imports[4].agentManager;
+  decrypt = imports[5].decrypt;
+  encrypt = imports[5].encrypt;
+  
+  logger.info('✅ Tous les modules importés avec succès');
+  
 } catch (error) {
-  logger.warn({ error }, '⚠️ Scheduler non disponible');
+  logger.error({ error }, '❌ Erreur critique lors de l\'importation des modules');
+  console.error('Critical startup error:', error);
+  process.exit(1);
 }
 
 const app = Fastify({ logger: true });
@@ -924,9 +930,19 @@ setInterval(async () => {
 // Démarrer le serveur
 async function start() {
   try {
+    // Charger le scheduler de manière asynchrone
+    try {
+      await import('./scheduler.js');
+      logger.info('✅ Scheduler initialisé');
+    } catch (error) {
+      logger.warn({ error: error.message }, '⚠️ Scheduler non disponible, continuant sans lui');
+    }
+    
     // Configuration d'écoute pour Railway
     const host = process.env.RAILWAY_STATIC_URL ? '0.0.0.0' : 'localhost';
     const port = config.port;
+    
+    logger.info(`🚀 Démarrage de FlowForge v2.1 sur ${host}:${port}`);
     
     await app.listen({ 
       port: port, 

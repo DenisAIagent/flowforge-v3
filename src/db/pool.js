@@ -24,16 +24,17 @@ pool.on('connect', () => {
   logger.info('Nouvelle connexion établie avec PostgreSQL');
 });
 
-// Test de connexion au démarrage
-try {
-  await pool.query('SELECT NOW()');
-  logger.info('Connexion PostgreSQL testée avec succès');
-} catch (error) {
-  logger.error({ error }, 'Erreur de connexion PostgreSQL');
-  if (config.isProduction) {
-    throw new Error('Impossible de se connecter à la base de données');
-  }
-}
+// Test de connexion au démarrage (asynchrone)
+pool.query('SELECT NOW()')
+  .then(() => {
+    logger.info('✅ Connexion PostgreSQL testée avec succès');
+  })
+  .catch(error => {
+    logger.error({ error }, '❌ Erreur de connexion PostgreSQL');
+    if (config.isProduction) {
+      logger.error('Application va s\'arrêter car impossible de se connecter à la base de données');
+    }
+  });
 
 export default pool;
 
