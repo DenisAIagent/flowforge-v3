@@ -96,6 +96,69 @@ CREATE TABLE IF NOT EXISTS chat_messages (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Table des agents IA (nouvelle architecture)
+CREATE TABLE IF NOT EXISTS ai_agents (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  description TEXT NOT NULL,
+  agent_type TEXT DEFAULT 'autonomous', -- autonomous, reactive, scheduled, monitoring
+  capabilities JSONB DEFAULT '[]', -- ['email_processing', 'data_analysis', etc.]
+  generated_code TEXT NOT NULL, -- Code JavaScript généré par Claude
+  configuration JSONB DEFAULT '{}', -- Config spécifique à l'agent
+  memory JSONB DEFAULT '{}', -- Mémoire persistante de l'agent
+  is_active BOOLEAN DEFAULT TRUE,
+  deployment_status TEXT DEFAULT 'deployed', -- deployed, stopped, error
+  last_execution TIMESTAMPTZ,
+  total_executions INTEGER DEFAULT 0,
+  success_rate DECIMAL(5,2) DEFAULT 100.0,
+  execution_interval INTEGER, -- Minutes entre exécutions (pour agents scheduled)
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Exécutions des agents IA
+CREATE TABLE IF NOT EXISTS agent_executions (
+  id SERIAL PRIMARY KEY,
+  agent_id INTEGER REFERENCES ai_agents(id) ON DELETE CASCADE,
+  status TEXT NOT NULL, -- running, success, error, timeout
+  trigger_type TEXT, -- manual, scheduled, webhook, event
+  input_data JSONB,
+  output_data JSONB,
+  error_message TEXT,
+  execution_time_ms INTEGER,
+  memory_usage_mb DECIMAL(10,2),
+  started_at TIMESTAMPTZ DEFAULT NOW(),
+  finished_at TIMESTAMPTZ
+);
+
+-- Logs détaillés des agents
+CREATE TABLE IF NOT EXISTS agent_logs (
+  id SERIAL PRIMARY KEY,
+  agent_id INTEGER REFERENCES ai_agents(id) ON DELETE CASCADE,
+  execution_id INTEGER REFERENCES agent_executions(id) ON DELETE CASCADE,
+  level TEXT NOT NULL, -- debug, info, warn, error
+  message TEXT NOT NULL,
+  context JSONB,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Templates d'agents (pour accélérer la création)
+CREATE TABLE IF NOT EXISTS agent_templates (
+  id SERIAL PRIMARY KEY,
+  name TEXT NOT NULL,
+  description TEXT NOT NULL,
+  category TEXT NOT NULL, -- productivity, marketing, development, monitoring
+  capabilities JSONB NOT NULL,
+  code_template TEXT NOT NULL,
+  default_config JSONB DEFAULT '{}',
+  is_public BOOLEAN DEFAULT FALSE,
+  created_by INTEGER REFERENCES users(id),
+  usage_count INTEGER DEFAULT 0,
+  rating DECIMAL(3,2) DEFAULT 0.0,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- Index pour améliorer les performances
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 CREATE INDEX IF NOT EXISTS idx_user_sessions_token ON user_sessions(session_token);
@@ -105,4 +168,10 @@ CREATE INDEX IF NOT EXISTS idx_workflows_user_id ON workflows(user_id);
 CREATE INDEX IF NOT EXISTS idx_executions_workflow_id ON executions(workflow_id);
 CREATE INDEX IF NOT EXISTS idx_chat_conversations_user_id ON chat_conversations(user_id);
 CREATE INDEX IF NOT EXISTS idx_chat_messages_conversation_id ON chat_messages(conversation_id);
+CREATE INDEX IF NOT EXISTS idx_ai_agents_user_id ON ai_agents(user_id);
+CREATE INDEX IF NOT EXISTS idx_ai_agents_status ON ai_agents(is_active, deployment_status);
+CREATE INDEX IF NOT EXISTS idx_agent_executions_agent_id ON agent_executions(agent_id);
+CREATE INDEX IF NOT EXISTS idx_agent_executions_status ON agent_executions(status);
+CREATE INDEX IF NOT EXISTS idx_agent_logs_agent_id ON agent_logs(agent_id);
+CREATE INDEX IF NOT EXISTS idx_agent_templates_category ON agent_templates(category);
 

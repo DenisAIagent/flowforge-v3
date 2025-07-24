@@ -8,6 +8,7 @@ import { logger } from './utils/logger.js';
 import { authManager } from './auth.js';
 import { integrationsManager } from './integrations.js';
 import { chatManager } from './chat.js';
+import { agentManager } from './agent-manager.js';
 import { decrypt, encrypt } from './crypto.js';
 import './scheduler.js'; // Démarre le scheduler
 
@@ -399,7 +400,201 @@ app.delete('/v1/integrations/:id', { preHandler: authenticateRequest }, async (r
   }
 });
 
-// ===== ROUTES DE WORKFLOWS =====
+// ===== ROUTES D'AGENTS IA =====
+
+// Lister les agents de l'utilisateur
+app.get('/v1/agents', { preHandler: authenticateRequest }, async (request, reply) => {
+  try {
+    const result = await pool.query(
+      'SELECT * FROM ai_agents WHERE user_id = $1 ORDER BY created_at DESC',
+      [request.user.userId]
+    );
+    reply.send(result.rows);
+  } catch (error) {
+    logger.error({ error, user_id: request.user.userId }, 'Erreur listage agents');
+    reply.code(500).send({ error: 'Erreur lors de la récupération des agents' });
+  }
+});
+
+// Obtenir un agent spécifique
+app.get('/v1/agents/:id', { preHandler: authenticateRequest }, async (request, reply) => {
+  try {
+    const result = await pool.query(
+      'SELECT * FROM ai_agents WHERE id = $1 AND user_id = $2',
+      [request.params.id, request.user.userId]
+    );
+    
+    if (result.rows.length === 0) {
+      return reply.code(404).send({ error: 'Agent non trouvé' });
+    }
+    
+    reply.send(result.rows[0]);
+  } catch (error) {
+    logger.error({ error, agent_id: request.params.id }, 'Erreur récupération agent');
+    reply.code(500).send({ error: 'Erreur lors de la récupération de l\'agent' });
+  }
+});
+
+// Créer un agent IA manuellement
+app.post('/v1/agents', { preHandler: authenticateRequest }, async (request, reply) => {
+  const { name, description, agentType, capabilities, generatedCode, configuration } = request.body;
+  
+  if (!name || !description || !generatedCode) {
+    return reply.code(400).send({ error: 'Nom, description et code requis' });
+  }
+
+  try {
+    const agent = await agentManager.createAgent(request.user.userId, {
+      name,
+      description,
+      agentType: agentType || 'autonomous',
+      capabilities: capabilities || [],
+      generatedCode,
+      configuration: configuration || {}
+    });
+    
+    reply.code(201).send(agent);
+  } catch (error) {
+    logger.error({ error, user_id: request.user.userId }, 'Erreur création agent');
+    reply.code(500).send({ error: 'Erreur lors de la création de l\'agent' });
+  }
+});
+
+// Exécuter un agent manuellement
+app.post('/v1/agents/:id/execute', { preHandler: authenticateRequest }, async (request, reply) => {
+  try {
+    const agent = await pool.query(
+      'SELECT * FROM ai_agents WHERE id = $1 AND user_id = $2',
+      [request.params.id, request.user.userId]
+    );
+    
+    if (agent.rows.length === 0) {
+      return reply.code(404).send({ error: 'Agent non trouvé' });
+    }
+    
+    const result = await agentManager.executeAgent(
+      parseInt(request.params.id),
+      request.body.inputData || {}
+    );
+    
+    reply.send({
+      message: 'Agent exécuté avec succès',
+      result
+    });
+  } catch (error) {
+    logger.error({ error, agent_id: request.params.id }, 'Erreur exécution agent');
+    reply.code(500).send({ error: error.message });
+  }
+});
+
+// Activer/désactiver un agent
+app.patch('/v1/agents/:id', { preHandler: authenticateRequest }, async (request, reply) => {
+  const { is_active, deployment_status } = request.body;
+  
+  try {
+    let updateQuery = 'UPDATE ai_agents SET updated_at = NOW()';
+    let updateValues = [];
+    let valueIndex = 1;
+    
+    if (typeof is_active === 'boolean') {
+      updateQuery += `, is_active = $${valueIndex}`;
+      updateValues.push(is_active);
+      valueIndex++;
+    }
+    
+    if (deployment_status) {
+      updateQuery += `, deployment_status = $${valueIndex}`;
+      updateValues.push(deployment_status);
+      valueIndex++;
+    }
+    
+    updateQuery += ` WHERE id = $${valueIndex} AND user_id = $${valueIndex + 1} RETURNING *`;
+    updateValues.push(request.params.id, request.user.userId);
+    
+    const result = await pool.query(updateQuery, updateValues);
+    
+    if (result.rows.length === 0) {
+      return reply.code(404).send({ error: 'Agent non trouvé' });
+    }
+    
+    reply.send(result.rows[0]);
+  } catch (error) {
+    logger.error({ error, agent_id: request.params.id }, 'Erreur modification agent');
+    reply.code(500).send({ error: 'Erreur lors de la modification de l\'agent' });
+  }
+});
+
+// Obtenir les logs d'un agent
+app.get('/v1/agents/:id/logs', { preHandler: authenticateRequest }, async (request, reply) => {
+  try {
+    const agent = await pool.query(
+      'SELECT id FROM ai_agents WHERE id = $1 AND user_id = $2',
+      [request.params.id, request.user.userId]
+    );
+    
+    if (agent.rows.length === 0) {
+      return reply.code(404).send({ error: 'Agent non trouvé' });
+    }
+
+    const result = await pool.query(
+      'SELECT * FROM agent_logs WHERE agent_id = $1 ORDER BY created_at DESC LIMIT 100',
+      [request.params.id]
+    );
+    
+    reply.send(result.rows);
+  } catch (error) {
+    logger.error({ error, agent_id: request.params.id }, 'Erreur récupération logs agent');
+    reply.code(500).send({ error: 'Erreur lors de la récupération des logs' });
+  }
+});
+
+// Obtenir les exécutions d'un agent
+app.get('/v1/agents/:id/executions', { preHandler: authenticateRequest }, async (request, reply) => {
+  try {
+    const agent = await pool.query(
+      'SELECT id FROM ai_agents WHERE id = $1 AND user_id = $2',
+      [request.params.id, request.user.userId]
+    );
+    
+    if (agent.rows.length === 0) {
+      return reply.code(404).send({ error: 'Agent non trouvé' });
+    }
+
+    const result = await pool.query(
+      'SELECT * FROM agent_executions WHERE agent_id = $1 ORDER BY started_at DESC LIMIT 50',
+      [request.params.id]
+    );
+    
+    reply.send(result.rows);
+  } catch (error) {
+    logger.error({ error, agent_id: request.params.id }, 'Erreur récupération exécutions agent');
+    reply.code(500).send({ error: 'Erreur lors de la récupération des exécutions' });
+  }
+});
+
+// Supprimer un agent
+app.delete('/v1/agents/:id', { preHandler: authenticateRequest }, async (request, reply) => {
+  try {
+    // Arrêter l'agent d'abord
+    await agentManager.stopAgent(parseInt(request.params.id));
+    
+    const result = await pool.query(
+      'DELETE FROM ai_agents WHERE id = $1 AND user_id = $2 RETURNING *',
+      [request.params.id, request.user.userId]
+    );
+    
+    if (result.rows.length === 0) {
+      return reply.code(404).send({ error: 'Agent non trouvé' });
+    }
+    
+    reply.code(204).send();
+  } catch (error) {
+    logger.error({ error, agent_id: request.params.id }, 'Erreur suppression agent');
+    reply.code(500).send({ error: 'Erreur lors de la suppression de l\'agent' });
+  }
+});
+
+// ===== ROUTES DE WORKFLOWS (legacy) =====
 
 // Lister les workflows de l'utilisateur
 app.get('/v1/workflows', { preHandler: authenticateRequest }, async (request, reply) => {

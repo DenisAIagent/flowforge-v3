@@ -3,6 +3,7 @@ import pool from './db/pool.js';
 import { config } from './config.js';
 import { logger } from './utils/logger.js';
 import { SUPPORTED_SERVICES } from './integrations.js';
+import { agentManager } from './agent-manager.js';
 
 const ALLOWED_COMPONENTS = [
   'discord_webhook-send_message',
@@ -28,9 +29,22 @@ export class ChatManager {
 
       const conversation = result.rows[0];
 
-      // Message de bienvenue
+      // Message de bienvenue (transformé pour les agents IA)
       await this.addMessage(conversation.id, 'assistant', 
-        'Bonjour ! Je suis votre assistant pour créer des workflows d\'automatisation. Décrivez-moi ce que vous souhaitez automatiser et je vous aiderai à configurer le workflow approprié.'
+        `🤖 **Bonjour ! Je suis votre assistant IA spécialisé dans la création d'agents intelligents.**
+
+Je peux créer pour vous des agents IA autonomes qui automatisent des tâches complexes, comme String.com :
+
+**✨ Exemples d'agents que je peux créer :**
+• 📧 **Agent Email Intelligent** - Catégorise, répond automatiquement
+• 📊 **Agent d'Analyse** - Compile rapports, surveille KPIs  
+• 🔔 **Agent de Monitoring** - Surveille mentions, événements
+• 💬 **Agent Communication** - Gère Slack, Discord automatiquement
+• 🗓️ **Agent Programmé** - Exécute tâches selon planning
+
+**Dites-moi simplement ce que vous voulez automatiser !**
+
+Par exemple : "Je veux un agent qui surveille mes emails Gmail et créé automatiquement des tickets dans Linear pour les demandes urgentes"`
       );
 
       logger.info({ user_id: userId, conversation_id: conversation.id }, 'Nouvelle conversation démarrée');
@@ -172,24 +186,28 @@ export class ChatManager {
       const claudeData = await claudeResponse.json();
       const assistantResponse = claudeData.content[0].text;
 
-      // Analyser la réponse pour détecter si un workflow doit être créé
-      const workflowData = this.extractWorkflowFromResponse(assistantResponse);
+      // Analyser la réponse pour détecter si un agent doit être créé
+      const agentData = this.extractAgentFromResponse(assistantResponse);
 
       let metadata = {};
-      if (workflowData) {
-        // Créer le workflow si les informations sont complètes
+      if (agentData) {
+        // Créer l'agent IA si les informations sont complètes
         try {
-          const workflow = await this.createWorkflowFromData(workflowData, userId);
-          metadata.workflow_created = workflow;
+          const agent = await this.createAgentFromData(agentData, userId);
+          metadata.agent_created = agent;
           
           // Mettre à jour le contexte de la conversation
           await pool.query(
             'UPDATE chat_conversations SET workflow_context = $1 WHERE id = $2',
-            [JSON.stringify({ last_workflow: workflow.id }), conversation.id]
+            [JSON.stringify({ 
+              last_agent: agent.id,
+              agent_type: agent.agent_type,
+              capabilities: agentData.capabilities
+            }), conversation.id]
           );
-        } catch (workflowError) {
-          logger.error({ error: workflowError }, 'Erreur création workflow depuis chat');
-          metadata.workflow_error = workflowError.message;
+        } catch (agentError) {
+          logger.error({ error: agentError }, 'Erreur création agent depuis chat');
+          metadata.agent_error = agentError.message;
         }
       }
 
@@ -212,43 +230,81 @@ export class ChatManager {
     }
   }
 
-  // Construire le prompt système pour l'assistant
+  // Construire le prompt système pour l'assistant (transformé pour les agents IA)
   buildSystemPrompt(userIntegrations) {
     const availableServices = userIntegrations.map(int => int.service_name).join(', ');
     
-    return `Vous êtes un assistant spécialisé dans la création de workflows d'automatisation.
+    return `Vous êtes un assistant IA spécialisé dans la création d'AGENTS INTELLIGENTS, comme String.com.
 
-VOTRE RÔLE:
-- Aider l'utilisateur à définir clairement ses besoins d'automatisation
-- Poser des questions de clarification pertinentes
-- Proposer des solutions techniques appropriées
-- Créer des workflows quand toutes les informations sont disponibles
+VOTRE NOUVEAU RÔLE:
+- Créer des agents IA autonomes qui automatisent des tâches complexes
+- Générer du code JavaScript intelligent pour chaque agent
+- Concevoir des agents qui apprennent et s'adaptent
+- Transformer les demandes en langage naturel en agents opérationnels
 
-SERVICES DISPONIBLES POUR CET UTILISATEUR:
+SERVICES DISPONIBLES:
 ${availableServices || 'Aucune intégration configurée'}
+- Gmail (email automation, monitoring, smart responses)
+- Slack/Discord (team communication, alerts, bot responses)  
+- Google Sheets (data analysis, automated reporting)
+- GitHub (issue management, PR automation)
+- Brevo (email marketing, campaigns)
+- Claude (AI analysis, content generation)
 
-COMPOSANTS SUPPORTÉS:
-${ALLOWED_COMPONENTS.join(', ')}
+TYPES D'AGENTS À CRÉER:
+1. **Agents de Monitoring** - Surveillent emails, mentions, événements
+2. **Agents d'Automation** - Automatisent tâches répétitives
+3. **Agents d'Analyse** - Analysent données et génèrent insights  
+4. **Agents de Communication** - Gèrent interactions et notifications
+5. **Agents Programmés** - Exécutent des tâches selon planning
+
+QUAND CRÉER UN AGENT:
+Si l'utilisateur dit des choses comme:
+- "Je veux un agent qui surveille mes emails et..."
+- "Crée-moi un bot qui répond automatiquement..."
+- "J'ai besoin d'automatiser..."
+- "Peux-tu faire un agent pour..."
+
+ALORS générez un JSON d'agent avec cette structure:
+\`\`\`json
+{
+  "agent_type": "create_agent",
+  "name": "Nom descriptif de l'agent",
+  "description": "Description détaillée de ce que fait l'agent",
+  "agent_category": "monitoring|automation|analysis|communication|scheduled",
+  "capabilities": ["email_processing", "ai_analysis", "messaging", "data_analysis"],
+  "execution_type": "autonomous|reactive|scheduled",
+  "generated_code": "// Code JavaScript de l'agent...",
+  "configuration": {
+    "interval_minutes": 60,
+    "triggers": ["new_email", "mention", "schedule"],
+    "parameters": {}
+  }
+}
+\`\`\`
+
+GÉNÉRATION DE CODE:
+Créez du code JavaScript moderne qui utilise les APIs disponibles:
+- \`await apis.sendEmail(to, subject, content)\`
+- \`await apis.sendSlackMessage(channel, message)\`
+- \`await apis.analyzeWithClaude(prompt, data)\`
+- \`await apis.getUnreadEmails()\`
+- \`await apis.appendToSheet(id, range, values)\`
+
+EXEMPLES D'AGENTS:
+1. **Agent de Catégorisation d'Emails**: Lit les emails, les catégorise avec IA
+2. **Agent de Surveillance de Marque**: Monitor mentions et répond intelligemment  
+3. **Agent de Reporting**: Compile données et envoie rapports automatiquement
+4. **Agent Support Client**: Répond aux questions courantes automatiquement
 
 INSTRUCTIONS:
-1. Posez des questions spécifiques pour comprendre:
-   - Le déclencheur (quand l'automatisation doit se lancer)
-   - L'action à effectuer (que faire)
-   - Les paramètres nécessaires (données à utiliser)
+1. Analysez la demande pour identifier le type d'agent nécessaire
+2. Posez des questions pour clarifier les besoins spécifiques
+3. Générez le code d'agent complet et fonctionnel
+4. Proposez des améliorations et évolutions possibles
+5. Expliquez comment l'agent va fonctionner en pratique
 
-2. Si l'utilisateur n'a pas configuré les intégrations nécessaires, guidez-le vers la page d'intégrations
-
-3. Quand vous avez toutes les informations, générez un JSON de workflow avec cette structure:
-   {
-     "name": "Nom du workflow",
-     "trigger_config": {"type": "manual", "description": "Description du déclencheur"},
-     "action_key": "service-action",
-     "action_props": {"propriété": "valeur"}
-   }
-
-4. Soyez professionnel, précis et évitez le jargon technique inutile
-
-5. Si l'utilisateur demande des fonctionnalités non supportées, expliquez les limitations et proposez des alternatives`;
+ATTENTION: Vous créez des AGENTS INTELLIGENTS, pas des workflows simples!`;
   }
 
   // Obtenir les intégrations de l'utilisateur
@@ -269,55 +325,84 @@ INSTRUCTIONS:
     }
   }
 
-  // Extraire les données de workflow de la réponse
-  extractWorkflowFromResponse(response) {
+  // Extraire les données d'agent de la réponse
+  extractAgentFromResponse(response) {
     try {
       // Chercher un bloc JSON dans la réponse
       const jsonMatch = response.match(/```json\s*(\{[\s\S]*?\})\s*```/);
       if (jsonMatch) {
-        return JSON.parse(jsonMatch[1]);
+        const agentData = JSON.parse(jsonMatch[1]);
+        if (agentData.agent_type === 'create_agent') {
+          return agentData;
+        }
       }
 
-      // Chercher un JSON sans bloc de code
-      const directJsonMatch = response.match(/\{[\s\S]*"action_key"[\s\S]*\}/);
+      // Chercher un JSON sans bloc de code pour agents
+      const directJsonMatch = response.match(/\{[\s\S]*"agent_type"[\s\S]*\}/);
       if (directJsonMatch) {
-        return JSON.parse(directJsonMatch[0]);
+        const agentData = JSON.parse(directJsonMatch[0]);
+        if (agentData.agent_type === 'create_agent') {
+          return agentData;
+        }
+      }
+
+      // Fallback: chercher d'anciens workflows et les ignorer
+      const workflowMatch = response.match(/\{[\s\S]*"action_key"[\s\S]*\}/);
+      if (workflowMatch) {
+        logger.debug('Ancien format workflow détecté, ignoré au profit des agents');
+        return null;
       }
 
       return null;
     } catch (error) {
-      logger.debug({ error }, 'Pas de JSON valide trouvé dans la réponse');
+      logger.debug({ error }, 'Pas de JSON d\'agent valide trouvé dans la réponse');
       return null;
     }
   }
 
-  // Créer un workflow à partir des données extraites
-  async createWorkflowFromData(workflowData, userId) {
-    // Valider les données
-    if (!workflowData.name || !workflowData.action_key || !workflowData.action_props) {
-      throw new Error('Données de workflow incomplètes');
+  // Créer un agent IA à partir des données extraites
+  async createAgentFromData(agentData, userId) {
+    try {
+      // Valider les données d'agent
+      if (!agentData.name || !agentData.description || !agentData.generated_code) {
+        throw new Error('Données d\'agent incomplètes - nom, description et code requis');
+      }
+
+      // Valider les capabilities
+      if (!agentData.capabilities || !Array.isArray(agentData.capabilities)) {
+        throw new Error('Les capabilities de l\'agent doivent être un tableau');
+      }
+
+      // Construire les données pour l'agent manager
+      const agentCreationData = {
+        name: agentData.name,
+        description: agentData.description,
+        agentType: agentData.execution_type || agentData.agent_category || 'autonomous',
+        capabilities: agentData.capabilities,
+        generatedCode: agentData.generated_code,
+        configuration: {
+          ...agentData.configuration,
+          interval_minutes: agentData.configuration?.interval_minutes || 60,
+          triggers: agentData.configuration?.triggers || [],
+          category: agentData.agent_category
+        }
+      };
+
+      // Créer l'agent via l'agent manager
+      const agent = await agentManager.createAgent(userId, agentCreationData);
+
+      logger.info({ 
+        user_id: userId, 
+        agent_id: agent.id,
+        agent_type: agent.agent_type,
+        capabilities: agentData.capabilities
+      }, 'Agent IA créé depuis chat');
+
+      return agent;
+    } catch (error) {
+      logger.error({ error, user_id: userId }, 'Erreur création agent depuis chat');
+      throw error;
     }
-
-    if (!ALLOWED_COMPONENTS.includes(workflowData.action_key)) {
-      throw new Error(`Composant non autorisé: ${workflowData.action_key}`);
-    }
-
-    // Créer le workflow
-    const result = await pool.query(
-      `INSERT INTO workflows (user_id, name, trigger_config, action_key, action_props)
-       VALUES ($1, $2, $3, $4, $5)
-       RETURNING *`,
-      [
-        userId,
-        workflowData.name,
-        workflowData.trigger_config || { type: 'manual' },
-        workflowData.action_key,
-        workflowData.action_props
-      ]
-    );
-
-    logger.info({ user_id: userId, workflow_id: result.rows[0].id }, 'Workflow créé depuis chat');
-    return result.rows[0];
   }
 
   // Détecter si une clarification est nécessaire
@@ -348,11 +433,36 @@ INSTRUCTIONS:
       });
     }
 
+    if (response.includes('agent')) {
+      actions.push({
+        type: 'view_agents',
+        label: 'Voir mes agents IA',
+        url: '/agents'
+      });
+    }
+
     if (response.includes('workflow')) {
       actions.push({
-        type: 'view_workflows',
-        label: 'Voir mes workflows',
+        type: 'view_workflows', 
+        label: 'Voir mes workflows (legacy)',
         url: '/workflows'
+      });
+    }
+
+    // Nouvelles actions spécifiques aux agents
+    if (response.includes('déployer') || response.includes('deploy')) {
+      actions.push({
+        type: 'deploy_agent',
+        label: 'Déployer l\'agent',
+        url: '/agents'
+      });
+    }
+
+    if (response.includes('monitoring') || response.includes('surveillance')) {
+      actions.push({
+        type: 'agent_monitoring',
+        label: 'Tableau de monitoring',
+        url: '/agents/monitoring'
       });
     }
 
