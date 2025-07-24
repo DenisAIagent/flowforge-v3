@@ -2,9 +2,10 @@
   "name": "flowforge",
   "version": "0.1.0",
   "type": "module",
-  "main": "src/server.js",
+  "main": "src/simple-server.js",
   "scripts": {
-    "start": "node src/server.js",
+    "start": "node src/simple-server.js",
+    "start:complex": "node src/server.js",
     "dev": "NODE_ENV=development nodemon src/server.js",
     "start:old": "node src/index.js",
     "test:startup": "node test-startup.js"

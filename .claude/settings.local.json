@@ -13,7 +13,9 @@
       "Bash(npm run test:startup:*)",
       "Bash(npm install)",
       "Bash(timeout 5 npm start:*)",
-      "Bash(gtimeout:*)"
+      "Bash(gtimeout:*)",
+      "Bash(git remote get-url:*)",
+      "Bash(pkill:*)"
     ],
     "deny": []
   }
