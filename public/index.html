@@ -1,0 +1,821 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FlowForge - Plateforme d'Automatisation</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --primary-color: #2563eb;
+      --primary-dark: #1d4ed8;
+      --secondary-color: #64748b;
+      --success-color: #059669;
+      --error-color: #dc2626;
+      --warning-color: #d97706;
+      --background: #f8fafc;
+      --surface: #ffffff;
+      --border: #e2e8f0;
+      --text-primary: #0f172a;
+      --text-secondary: #64748b;
+      --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+      --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--background);
+      color: var(--text-primary);
+      line-height: 1.6;
+    }
+
+    /* Layout */
+    .app-container {
+      display: flex;
+      min-height: 100vh;
+    }
+
+    .sidebar {
+      width: 280px;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      padding: 1.5rem 0;
+      position: fixed;
+      height: 100vh;
+      overflow-y: auto;
+    }
+
+    .main-content {
+      flex: 1;
+      margin-left: 280px;
+      padding: 2rem;
+    }
+
+    .logo {
+      padding: 0 1.5rem 2rem;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 2rem;
+    }
+
+    .logo h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--primary-color);
+    }
+
+    .logo p {
+      font-size: 0.875rem;
+      color: var(--text-secondary);
+      margin-top: 0.25rem;
+    }
+
+    /* Navigation */
+    .nav-menu {
+      list-style: none;
+      padding: 0 1rem;
+    }
+
+    .nav-item {
+      margin-bottom: 0.5rem;
+    }
+
+    .nav-link {
+      display: flex;
+      align-items: center;
+      padding: 0.75rem 1rem;
+      color: var(--text-secondary);
+      text-decoration: none;
+      border-radius: 0.5rem;
+      transition: all 0.2s;
+      font-weight: 500;
+    }
+
+    .nav-link:hover {
+      background: var(--background);
+      color: var(--text-primary);
+    }
+
+    .nav-link.active {
+      background: var(--primary-color);
+      color: white;
+    }
+
+    .nav-icon {
+      width: 20px;
+      height: 20px;
+      margin-right: 0.75rem;
+      flex-shrink: 0;
+    }
+
+    /* User info */
+    .user-info {
+      padding: 1.5rem;
+      border-top: 1px solid var(--border);
+      margin-top: auto;
+    }
+
+    .user-avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: var(--primary-color);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+    }
+
+    .user-name {
+      font-weight: 600;
+      font-size: 0.875rem;
+    }
+
+    .user-email {
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+    }
+
+    /* Page content */
+    .page {
+      display: none;
+    }
+
+    .page.active {
+      display: block;
+    }
+
+    .page-header {
+      margin-bottom: 2rem;
+    }
+
+    .page-title {
+      font-size: 2rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+    }
+
+    .page-description {
+      color: var(--text-secondary);
+      font-size: 1.125rem;
+    }
+
+    /* Cards */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 0.75rem;
+      padding: 1.5rem;
+      box-shadow: var(--shadow);
+      margin-bottom: 1.5rem;
+    }
+
+    .card-header {
+      margin-bottom: 1rem;
+    }
+
+    .card-title {
+      font-size: 1.25rem;
+      font-weight: 600;
+      margin-bottom: 0.25rem;
+    }
+
+    .card-subtitle {
+      color: var(--text-secondary);
+      font-size: 0.875rem;
+    }
+
+    /* Forms */
+    .form-group {
+      margin-bottom: 1.5rem;
+    }
+
+    .form-label {
+      display: block;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+      color: var(--text-primary);
+    }
+
+    .form-control {
+      width: 100%;
+      padding: 0.75rem 1rem;
+      border: 1px solid var(--border);
+      border-radius: 0.5rem;
+      font-size: 1rem;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .form-control:focus {
+      outline: none;
+      border-color: var(--primary-color);
+      box-shadow: 0 0 0 3px rgb(37 99 235 / 0.1);
+    }
+
+    .form-control.error {
+      border-color: var(--error-color);
+    }
+
+    textarea.form-control {
+      resize: vertical;
+      min-height: 120px;
+    }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0.75rem 1.5rem;
+      border: none;
+      border-radius: 0.5rem;
+      font-size: 0.875rem;
+      font-weight: 600;
+      text-decoration: none;
+      cursor: pointer;
+      transition: all 0.2s;
+      gap: 0.5rem;
+    }
+
+    .btn-primary {
+      background: var(--primary-color);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: var(--primary-dark);
+    }
+
+    .btn-secondary {
+      background: var(--secondary-color);
+      color: white;
+    }
+
+    .btn-success {
+      background: var(--success-color);
+      color: white;
+    }
+
+    .btn-danger {
+      background: var(--error-color);
+      color: white;
+    }
+
+    .btn-outline {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-primary);
+    }
+
+    .btn-outline:hover {
+      background: var(--background);
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .btn-small {
+      padding: 0.5rem 1rem;
+      font-size: 0.75rem;
+    }
+
+    /* Chat interface */
+    .chat-container {
+      display: flex;
+      flex-direction: column;
+      height: 600px;
+      border: 1px solid var(--border);
+      border-radius: 0.75rem;
+      overflow: hidden;
+    }
+
+    .chat-messages {
+      flex: 1;
+      padding: 1rem;
+      overflow-y: auto;
+      background: var(--background);
+    }
+
+    .chat-message {
+      margin-bottom: 1rem;
+      display: flex;
+      gap: 0.75rem;
+    }
+
+    .chat-message.user {
+      flex-direction: row-reverse;
+    }
+
+    .message-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: var(--primary-color);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 0.75rem;
+      font-weight: 600;
+      flex-shrink: 0;
+    }
+
+    .message-avatar.assistant {
+      background: var(--secondary-color);
+    }
+
+    .message-content {
+      flex: 1;
+      max-width: 70%;
+    }
+
+    .message-bubble {
+      background: var(--surface);
+      padding: 0.75rem 1rem;
+      border-radius: 1rem;
+      border: 1px solid var(--border);
+      word-wrap: break-word;
+    }
+
+    .chat-message.user .message-bubble {
+      background: var(--primary-color);
+      color: white;
+      border-color: var(--primary-color);
+    }
+
+    .message-time {
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      margin-top: 0.25rem;
+    }
+
+    .chat-input-container {
+      padding: 1rem;
+      border-top: 1px solid var(--border);
+      background: var(--surface);
+    }
+
+    .chat-input-form {
+      display: flex;
+      gap: 0.75rem;
+    }
+
+    .chat-input {
+      flex: 1;
+      padding: 0.75rem 1rem;
+      border: 1px solid var(--border);
+      border-radius: 1.5rem;
+      resize: none;
+      max-height: 120px;
+    }
+
+    .chat-send-btn {
+      padding: 0.75rem 1.5rem;
+      border-radius: 1.5rem;
+    }
+
+    /* Tables */
+    .table-container {
+      overflow-x: auto;
+      border: 1px solid var(--border);
+      border-radius: 0.75rem;
+    }
+
+    .table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .table th,
+    .table td {
+      padding: 0.75rem 1rem;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .table th {
+      background: var(--background);
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .table tr:hover {
+      background: var(--background);
+    }
+
+    /* Status badges */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.25rem 0.75rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+
+    .badge-success {
+      background: rgb(34 197 94 / 0.1);
+      color: var(--success-color);
+    }
+
+    .badge-error {
+      background: rgb(220 38 38 / 0.1);
+      color: var(--error-color);
+    }
+
+    .badge-warning {
+      background: rgb(217 119 6 / 0.1);
+      color: var(--warning-color);
+    }
+
+    .badge-secondary {
+      background: rgb(100 116 139 / 0.1);
+      color: var(--secondary-color);
+    }
+
+    /* Loading spinner */
+    .spinner {
+      width: 20px;
+      height: 20px;
+      border: 2px solid var(--border);
+      border-top: 2px solid var(--primary-color);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    /* Alerts */
+    .alert {
+      padding: 1rem;
+      border-radius: 0.5rem;
+      margin-bottom: 1rem;
+      border: 1px solid;
+    }
+
+    .alert-success {
+      background: rgb(34 197 94 / 0.1);
+      border-color: var(--success-color);
+      color: var(--success-color);
+    }
+
+    .alert-error {
+      background: rgb(220 38 38 / 0.1);
+      border-color: var(--error-color);
+      color: var(--error-color);
+    }
+
+    .alert-info {
+      background: rgb(37 99 235 / 0.1);
+      border-color: var(--primary-color);
+      color: var(--primary-color);
+    }
+
+    /* Login page */
+    .login-container {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
+    }
+
+    .login-card {
+      background: var(--surface);
+      padding: 2rem;
+      border-radius: 1rem;
+      box-shadow: var(--shadow-lg);
+      width: 100%;
+      max-width: 400px;
+    }
+
+    .login-header {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+
+    .login-title {
+      font-size: 1.75rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+    }
+
+    .login-subtitle {
+      color: var(--text-secondary);
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .sidebar {
+        transform: translateX(-100%);
+        transition: transform 0.3s;
+      }
+
+      .sidebar.open {
+        transform: translateX(0);
+      }
+
+      .main-content {
+        margin-left: 0;
+        padding: 1rem;
+      }
+
+      .chat-container {
+        height: 500px;
+      }
+
+      .message-content {
+        max-width: 85%;
+      }
+    }
+
+    /* Utility classes */
+    .hidden { display: none !important; }
+    .text-center { text-align: center; }
+    .text-right { text-align: right; }
+    .mb-0 { margin-bottom: 0; }
+    .mb-1 { margin-bottom: 0.5rem; }
+    .mb-2 { margin-bottom: 1rem; }
+    .mt-2 { margin-top: 1rem; }
+    .flex { display: flex; }
+    .flex-1 { flex: 1; }
+    .items-center { align-items: center; }
+    .justify-between { justify-content: space-between; }
+    .gap-2 { gap: 0.5rem; }
+    .gap-4 { gap: 1rem; }
+  </style>
+</head>
+<body>
+  <!-- Login Page -->
+  <div id="loginPage" class="login-container">
+    <div class="login-card">
+      <div class="login-header">
+        <h1 class="login-title">FlowForge</h1>
+        <p class="login-subtitle">Connectez-vous à votre espace</p>
+      </div>
+      
+      <form id="loginForm">
+        <div class="form-group">
+          <label class="form-label" for="loginEmail">Email</label>
+          <input type="email" id="loginEmail" class="form-control" required>
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label" for="loginPassword">Mot de passe</label>
+          <input type="password" id="loginPassword" class="form-control" required>
+        </div>
+        
+        <button type="submit" class="btn btn-primary" style="width: 100%;">
+          <span id="loginBtnText">Se connecter</span>
+          <div id="loginSpinner" class="spinner hidden"></div>
+        </button>
+      </form>
+      
+      <div id="loginAlert"></div>
+      
+      <div class="text-center mt-2">
+        <a href="#" id="showRegisterLink" style="color: var(--primary-color); text-decoration: none;">
+          Créer un compte
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Register Page -->
+  <div id="registerPage" class="login-container hidden">
+    <div class="login-card">
+      <div class="login-header">
+        <h1 class="login-title">Créer un compte</h1>
+        <p class="login-subtitle">Rejoignez FlowForge</p>
+      </div>
+      
+      <form id="registerForm">
+        <div class="form-group">
+          <label class="form-label" for="registerFirstName">Prénom</label>
+          <input type="text" id="registerFirstName" class="form-control" required>
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label" for="registerLastName">Nom</label>
+          <input type="text" id="registerLastName" class="form-control" required>
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label" for="registerEmail">Email</label>
+          <input type="email" id="registerEmail" class="form-control" required>
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label" for="registerPassword">Mot de passe</label>
+          <input type="password" id="registerPassword" class="form-control" required>
+        </div>
+        
+        <button type="submit" class="btn btn-primary" style="width: 100%;">
+          <span id="registerBtnText">Créer le compte</span>
+          <div id="registerSpinner" class="spinner hidden"></div>
+        </button>
+      </form>
+      
+      <div id="registerAlert"></div>
+      
+      <div class="text-center mt-2">
+        <a href="#" id="showLoginLink" style="color: var(--primary-color); text-decoration: none;">
+          Déjà un compte ? Se connecter
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Application -->
+  <div id="mainApp" class="app-container hidden">
+    <!-- Sidebar -->
+    <nav class="sidebar">
+      <div class="logo">
+        <h1>FlowForge</h1>
+        <p>Plateforme d'automatisation</p>
+      </div>
+      
+      <ul class="nav-menu">
+        <li class="nav-item">
+          <a href="#" class="nav-link active" data-page="chat">
+            <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
+            </svg>
+            Assistant IA
+          </a>
+        </li>
+        
+        <li class="nav-item">
+          <a href="#" class="nav-link" data-page="workflows">
+            <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+            </svg>
+            Workflows
+          </a>
+        </li>
+        
+        <li class="nav-item">
+          <a href="#" class="nav-link" data-page="integrations">
+            <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+            </svg>
+            Intégrations
+          </a>
+        </li>
+        
+        <li class="nav-item">
+          <a href="#" class="nav-link" data-page="logs">
+            <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+            </svg>
+            Logs
+          </a>
+        </li>
+        
+        <li class="nav-item">
+          <a href="#" class="nav-link" data-page="admin">
+            <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"></path>
+            </svg>
+            Administration
+          </a>
+        </li>
+      </ul>
+      
+      <div class="user-info">
+        <div class="user-avatar" id="userAvatar">U</div>
+        <div class="user-name" id="userName">Utilisateur</div>
+        <div class="user-email" id="userEmail">user@example.com</div>
+        <button class="btn btn-outline btn-small mt-2" id="logoutBtn" style="width: 100%;">
+          Déconnexion
+        </button>
+      </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <!-- Chat Page -->
+      <div id="chatPage" class="page active">
+        <div class="page-header">
+          <h1 class="page-title">Assistant IA</h1>
+          <p class="page-description">Décrivez vos besoins d'automatisation et laissez l'IA vous guider</p>
+        </div>
+        
+        <div class="card">
+          <div class="chat-container">
+            <div class="chat-messages" id="chatMessages">
+              <!-- Messages will be inserted here -->
+            </div>
+            
+            <div class="chat-input-container">
+              <form class="chat-input-form" id="chatForm">
+                <textarea 
+                  class="chat-input" 
+                  id="chatInput" 
+                  placeholder="Décrivez ce que vous souhaitez automatiser..."
+                  rows="1"
+                ></textarea>
+                <button type="submit" class="btn btn-primary chat-send-btn">
+                  Envoyer
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Workflows Page -->
+      <div id="workflowsPage" class="page">
+        <div class="page-header">
+          <h1 class="page-title">Mes Workflows</h1>
+          <p class="page-description">Gérez vos automatisations</p>
+        </div>
+        
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">Workflows actifs</h2>
+          </div>
+          <div id="workflowsList">
+            <!-- Workflows will be loaded here -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Integrations Page -->
+      <div id="integrationsPage" class="page">
+        <div class="page-header">
+          <h1 class="page-title">Intégrations</h1>
+          <p class="page-description">Configurez vos services et API</p>
+        </div>
+        
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">Services disponibles</h2>
+          </div>
+          <div id="integrationsList">
+            <!-- Integrations will be loaded here -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Logs Page -->
+      <div id="logsPage" class="page">
+        <div class="page-header">
+          <h1 class="page-title">Logs d'exécution</h1>
+          <p class="page-description">Suivez l'activité de vos workflows</p>
+        </div>
+        
+        <div class="card">
+          <div class="table-container">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Workflow</th>
+                  <th>Statut</th>
+                  <th>Démarré</th>
+                  <th>Terminé</th>
+                  <th>Détails</th>
+                </tr>
+              </thead>
+              <tbody id="logsTableBody">
+                <!-- Logs will be loaded here -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Admin Page -->
+      <div id="adminPage" class="page">
+        <div class="page-header">
+          <h1 class="page-title">Administration</h1>
+          <p class="page-description">Gestion des utilisateurs et du système</p>
+        </div>
+        
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">Utilisateurs</h2>
+          </div>
+          <div id="usersList">
+            <!-- Users will be loaded here -->
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
+
