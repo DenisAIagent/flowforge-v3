@@ -15,7 +15,8 @@
       "Bash(timeout 5 npm start:*)",
       "Bash(gtimeout:*)",
       "Bash(git remote get-url:*)",
-      "Bash(pkill:*)"
+      "Bash(pkill:*)",
+      "Bash(git remote add:*)"
     ],
     "deny": []
   }
