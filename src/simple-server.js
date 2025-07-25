@@ -772,7 +772,7 @@ async function start() {
     const port = parseInt(process.env.PORT) || 3000;
     const host = '0.0.0.0';
     
-    console.log(`🚀 Starting FlowForge v2.1 on ${host}:${port}`);
+    console.log(`🚀 Starting FlowForge v2.1 on ${host}:${port} - OAuth Ready`);
     
     await app.listen({ 
       port: port, 
