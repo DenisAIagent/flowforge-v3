@@ -77,13 +77,7 @@ CREATE TRIGGER update_users_updated_at
 INSERT INTO users (id, email, first_name, last_name, role, status) 
 VALUES (
     'admin-' || gen_random_uuid(),
-    COALESCE(
-        (SELECT value FROM (VALUES 
-            (NULL, getenv('ADMIN_EMAIL')),
-            (NULL, 'admin@flowforge.com')
-        ) AS t(id, value) WHERE value IS NOT NULL LIMIT 1),
-        'admin@flowforge.com'
-    ),
+    'admin@flowforge.com',
     'Administrateur',
     'FlowForge',
     'admin',
