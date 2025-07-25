@@ -684,17 +684,23 @@ app.get('/test/db', async () => {
 // Enregistrement par email
 app.post('/auth/email/register', async (request, reply) => {
   try {
+    console.log('📧 Tentative d\'enregistrement email...');
     const { email, password, firstName, lastName } = request.body;
+    
+    console.log('📋 Données reçues:', { email, firstName, lastName, passwordLength: password?.length });
     
     // Validation basique
     if (!email || !password || !firstName || !lastName) {
+      console.log('❌ Validation échouée: champs manquants');
       return reply.code(400).send({ error: 'Tous les champs sont requis' });
     }
     
     if (password.length < 8) {
+      console.log('❌ Validation échouée: mot de passe trop court');
       return reply.code(400).send({ error: 'Le mot de passe doit contenir au moins 8 caractères' });
     }
     
+    console.log('✅ Validation réussie, appel authService...');
     const result = await authService.registerWithEmail({
       email,
       password,
@@ -702,11 +708,13 @@ app.post('/auth/email/register', async (request, reply) => {
       lastName
     });
     
+    console.log('✅ Enregistrement réussi:', email);
     reply.send(result);
     
   } catch (error) {
     console.error('❌ Erreur enregistrement:', error);
-    reply.code(400).send({ error: error.message });
+    console.error('❌ Stack trace:', error.stack);
+    reply.code(400).send({ error: error.message || 'Erreur lors de l\'enregistrement' });
   }
 });
 
