@@ -35,10 +35,19 @@ function validateRequiredEnvVars() {
 // Valider au démarrage
 validateRequiredEnvVars();
 
+// Debug de la DATABASE_URL en production
+if (process.env.NODE_ENV === 'production') {
+  console.log('🔍 Debug DATABASE_URL:', {
+    exists: !!process.env.DATABASE_URL,
+    starts_with: process.env.DATABASE_URL?.substring(0, 20) + '...',
+    railway_env: !!process.env.RAILWAY_STATIC_URL
+  });
+}
+
 export const config = {
   port: parseInt(process.env.PORT) || 3000,
   nodeEnv: process.env.NODE_ENV || 'development',
-  databaseUrl: process.env.DATABASE_URL || 'postgresql://localhost:5432/flowforge',
+  databaseUrl: process.env.DATABASE_URL || (process.env.NODE_ENV === 'production' ? null : 'postgresql://localhost:5432/flowforge'),
   encryptionKey: process.env.ENCRYPTION_KEY || 'dev-key-not-for-production',
   discordWebhookUrl: process.env.DISCORD_WEBHOOK_URL,
   claudeApiKey: process.env.CLAUDE_API_KEY || 'missing-claude-key',

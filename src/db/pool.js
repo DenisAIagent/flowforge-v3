@@ -3,6 +3,19 @@ import { config } from '../config.js';
 
 const { Pool } = pg;
 
+// Vérification DATABASE_URL obligatoire en production
+if (config.isProduction && !config.databaseUrl) {
+  console.error('❌ ERREUR CRITIQUE: DATABASE_URL manquante en production');
+  console.error('Vérifiez la variable d\'environnement DATABASE_URL sur Railway');
+  process.exit(1);
+}
+
+console.log('🗄️ Configuration DB:', {
+  url: config.databaseUrl ? config.databaseUrl.substring(0, 20) + '...' : 'MANQUANTE',
+  ssl: config.isProduction,
+  production: config.isProduction
+});
+
 // Configuration de la pool avec gestion d'erreurs
 const poolConfig = {
   connectionString: config.databaseUrl,
