@@ -1,5 +1,6 @@
 import pg from 'pg';
 import dns from 'dns';
+import { promisify } from 'util';
 import { config } from '../config.js';
 
 const { Pool } = pg;
@@ -7,10 +8,13 @@ const { Pool } = pg;
 // Forcer IPv4 pour Railway
 dns.setDefaultResultOrder('ipv4first');
 
+// Promisify dns.lookup pour résolution manuelle
+const dnsLookup = promisify(dns.lookup);
+
 /**
  * Pool spécialisée Railway avec résolution IPv4 forcée
  */
-export function createRailwayPool() {
+export async function createRailwayPool() {
   if (!config.databaseUrl) {
     console.error('❌ DATABASE_URL manquante pour Railway');
     return null;
@@ -28,16 +32,20 @@ export function createRailwayPool() {
       protocol: url.protocol
     });
     
-    // Tentative de forcer un hostname IPv4 si hostname contient des caractères IPv6
-    let finalHost = url.hostname;
-    if (url.hostname.includes(':')) {
-      console.log('⚠️  Hostname IPv6 détecté, tentative de résolution...');
-      // En dernier recours, essayer de mapper vers un nom de domaine
-      finalHost = url.hostname.replace(/\[|\]/g, ''); // Supprimer les crochets IPv6
+    // Résolution DNS manuelle IPv4 FORCÉE
+    let resolvedHost = url.hostname;
+    try {
+      console.log('🔍 Résolution DNS IPv4 forcée pour:', url.hostname);
+      const { address } = await dnsLookup(url.hostname, { family: 4 });
+      resolvedHost = address;
+      console.log('✅ IPv4 résolu:', resolvedHost);
+    } catch (dnsError) {
+      console.log('⚠️  Échec résolution IPv4, utilisation hostname original:', dnsError.message);
+      resolvedHost = url.hostname;
     }
     
     const poolConfig = {
-      host: finalHost,
+      host: resolvedHost, // Utiliser l'IP IPv4 résolue
       port: parseInt(url.port) || 5432,
       database: url.pathname.substring(1),
       user: url.username,
@@ -49,7 +57,7 @@ export function createRailwayPool() {
       // Options Railway spécifiques
       keepAlive: true,
       keepAliveInitialDelayMillis: 10000,
-      // Forcer IPv4 via family
+      // Forcer IPv4 via family (doublement sûr)
       family: 4
     };
 

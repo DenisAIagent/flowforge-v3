@@ -20,26 +20,57 @@ console.log('🗄️ Configuration DB:', {
 // Configuration de la pool avec gestion d'erreurs
 let pool;
 
-if (config.databaseUrl) {
-  // Utiliser pool spécialisée Railway en production
-  if (config.isProduction && config.isRailway) {
-    console.log('🚂 Utilisation Railway Pool spécialisée...');
-    pool = createRailwayPool();
-  }
-  
-  // Fallback vers pool standard si Railway pool échoue
-  if (!pool) {
-    console.log('🔄 Fallback vers pool standard...');
-    const poolConfig = {
-      connectionString: config.databaseUrl,
-      max: 20,
-      idleTimeoutMillis: 30000,
-      connectionTimeoutMillis: 10000,
-      ssl: config.isProduction ? { rejectUnauthorized: false } : false
-    };
+// Fonction asynchrone pour initialiser la pool
+async function initializePool() {
+  if (config.databaseUrl) {
+    // Utiliser pool spécialisée Railway en production
+    if (config.isProduction && config.isRailway) {
+      console.log('🚂 Utilisation Railway Pool spécialisée...');
+      try {
+        pool = await createRailwayPool();
+      } catch (error) {
+        console.error('❌ Erreur création Railway Pool:', error.message);
+        pool = null;
+      }
+    }
+    
+    // Fallback vers pool standard si Railway pool échoue
+    if (!pool) {
+      console.log('🔄 Fallback vers pool standard...');
+      const poolConfig = {
+        connectionString: config.databaseUrl,
+        max: 20,
+        idleTimeoutMillis: 30000,
+        connectionTimeoutMillis: 10000,
+        ssl: config.isProduction ? { rejectUnauthorized: false } : false
+      };
 
-    pool = new Pool(poolConfig);
+      pool = new Pool(poolConfig);
+    }
+  } else {
+    // Pool mock si pas de DATABASE_URL
+    console.warn('⚠️  Utilisation d\'une pool mock - DB indisponible');
+    pool = {
+      query: () => Promise.reject(new Error('DATABASE_URL non configurée')),
+      end: () => Promise.resolve(),
+      on: () => {}
+    };
   }
+}
+
+// Initialiser la pool
+if (config.databaseUrl) {
+  initializePool().then(() => {
+    console.log('✅ Pool initialisée avec succès');
+  }).catch(error => {
+    console.error('❌ Erreur initialisation pool:', error);
+    // Pool mock en cas d'échec
+    pool = {
+      query: () => Promise.reject(new Error('Erreur initialisation pool: ' + error.message)),
+      end: () => Promise.resolve(),
+      on: () => {}
+    };
+  });
 } else {
   // Pool mock si pas de DATABASE_URL
   console.warn('⚠️  Utilisation d\'une pool mock - DB indisponible');
