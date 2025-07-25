@@ -340,6 +340,7 @@ app.get('/', async (request, reply) => {
         
         if (authStatus && authMessage) {
             authMessage.style.display = 'block';
+            const message = urlParams.get('message');
             
             switch(authStatus) {
                 case 'pending':
@@ -354,9 +355,32 @@ app.get('/', async (request, reply) => {
                     authMessage.className = 'auth-message error';
                     authMessage.textContent = '❌ Votre demande d\'accès a été refusée. Contactez l\'administrateur pour plus d\'informations.';
                     break;
+                case 'logged_out':
+                    authMessage.className = 'auth-message info';
+                    authMessage.textContent = '👋 Vous avez été déconnecté avec succès.';
+                    break;
                 case 'error':
                     authMessage.className = 'auth-message error';
-                    authMessage.textContent = '⚠️ Erreur lors de l\'authentification. Veuillez réessayer.';
+                    
+                    switch(message) {
+                        case 'oauth_not_configured':
+                            authMessage.innerHTML = '⚙️ <strong>Configuration requise:</strong><br/>• Configurez GOOGLE_CLIENT_ID et GOOGLE_CLIENT_SECRET<br/>• Voir SETUP.md pour les instructions complètes';
+                            break;
+                        case 'user_not_found':
+                            authMessage.textContent = '🔍 Utilisateur non trouvé. Demandez d\'abord l\'accès avec le bouton "Demander l\'accès".';
+                            break;
+                        case 'account_inactive':
+                            authMessage.textContent = '⏳ Votre compte n\'est pas encore activé. Contactez l\'administrateur.';
+                            break;
+                        case 'session_expired':
+                            authMessage.textContent = '⏰ Votre session a expiré. Veuillez vous reconnecter.';
+                            break;
+                        case 'not_authenticated':
+                            authMessage.textContent = '🔐 Accès non autorisé. Veuillez vous connecter d\'abord.';
+                            break;
+                        default:
+                            authMessage.textContent = '⚠️ Erreur lors de l\'authentification. Vérifiez la configuration et réessayez.';
+                    }
                     break;
             }
         }
@@ -416,68 +440,89 @@ app.get('/test/db', async () => {
 
 // Connexion utilisateur existant
 app.get('/auth/google/login', async (request, reply) => {
-  // Pour l'instant, on simule la connexion
-  // Dans une version complète, ici on ferait l'OAuth Google et on vérifierait si l'utilisateur existe
-  
-  const mockGoogleUser = {
-    email: 'admin@flowforge.com',
-    name: 'Administrateur FlowForge',
-    picture: 'https://via.placeholder.com/100'
-  };
-  
   try {
-    // TODO: Vérifier OAuth Google
-    // TODO: Vérifier si l'utilisateur existe et est approuvé
-    // TODO: Créer session utilisateur
+    // Vérifier si Google OAuth est configuré
+    if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
+      console.log('⚠️  Google OAuth non configuré - variables GOOGLE_CLIENT_ID/SECRET manquantes');
+      return reply.redirect('/?auth=error&message=oauth_not_configured');
+    }
     
-    console.log('🔐 Connexion utilisateur:', mockGoogleUser.email);
-    
-    // Simuler une connexion réussie (redirection vers dashboard)
-    reply.redirect('/dashboard');
-    
+    const authUrl = authService.generateGoogleAuthUrl('login');
+    console.log('🔐 Redirection vers Google OAuth pour connexion');
+    reply.redirect(authUrl);
   } catch (error) {
-    console.error('Erreur connexion:', error);
-    reply.redirect('/?auth=error');
+    console.error('❌ Erreur génération URL auth:', error);
+    reply.redirect('/?auth=error&message=oauth_error');
   }
 });
 
 // Demande d'accès pour nouvel utilisateur
 app.get('/auth/google/request', async (request, reply) => {
-  // Pour l'instant, on simule juste une demande d'accès
-  // Dans une version complète, ici on ferait l'OAuth Google
+  try {
+    // Vérifier si Google OAuth est configuré
+    if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
+      console.log('⚠️  Google OAuth non configuré - variables GOOGLE_CLIENT_ID/SECRET manquantes');
+      return reply.redirect('/?auth=error&message=oauth_not_configured');
+    }
+    
+    const authUrl = authService.generateGoogleAuthUrl('request');
+    console.log('📧 Redirection vers Google OAuth pour demande d\'accès');
+    reply.redirect(authUrl);
+  } catch (error) {
+    console.error('❌ Erreur génération URL auth:', error);
+    reply.redirect('/?auth=error&message=oauth_error');
+  }
+});
+
+// Callback OAuth Google
+app.get('/auth/google/callback', async (request, reply) => {
+  const { code, state } = request.query;
   
-  const mockGoogleUser = {
-    email: 'newuser@example.com',
-    name: 'Nouvel Utilisateur',
-    picture: 'https://via.placeholder.com/100'
-  };
+  if (!code) {
+    return reply.redirect('/?auth=error&message=oauth_callback_error');
+  }
   
   try {
-    // Simuler la création d'une demande d'accès
-    const accessRequest = {
-      id: Date.now(),
-      email: mockGoogleUser.email,
-      name: mockGoogleUser.name,
-      picture: mockGoogleUser.picture,
-      status: 'pending',
-      requested_at: new Date().toISOString(),
-      admin_notified: true
-    };
+    // Décoder le state pour savoir si c'est login ou request
+    const stateData = JSON.parse(state || '{}');
+    const authType = stateData.type || 'login';
     
-    // TODO: Sauvegarder en base de données
-    // TODO: Envoyer email à l'admin avec liens approve/reject
+    // Échanger le code contre les informations utilisateur
+    const userInfo = await authService.exchangeCodeForTokens(code);
     
-    console.log('📧 Nouvelle demande d\'accès:', accessRequest);
-    console.log('📨 Email admin envoyé avec liens:');
-    console.log(`   - Approuver: ${request.protocol}://${request.hostname}/admin/approve/${accessRequest.id}`);
-    console.log(`   - Refuser: ${request.protocol}://${request.hostname}/admin/reject/${accessRequest.id}`);
-    
-    // Rediriger vers la page d'accueil avec message
-    reply.redirect('/?auth=pending');
+    if (authType === 'login') {
+      // Connexion - vérifier si l'utilisateur existe et est approuvé
+      const user = await authService.getUserByEmail(userInfo.email);
+      
+      if (!user) {
+        return reply.redirect('/?auth=error&message=user_not_found');
+      }
+      
+      if (user.status !== 'active') {
+        return reply.redirect('/?auth=error&message=account_inactive');
+      }
+      
+      // Créer session
+      const sessionToken = await authService.createUserSession(user);
+      request.session.sessionToken = sessionToken;
+      request.session.user = {
+        id: user.id,
+        email: user.email,
+        name: `${user.first_name} ${user.last_name}`,
+        role: user.role
+      };
+      
+      reply.redirect('/dashboard');
+      
+    } else if (authType === 'request') {
+      // Demande d'accès - créer une nouvelle demande
+      const accessRequest = await authService.createAccessRequest(userInfo);
+      reply.redirect('/?auth=pending');
+    }
     
   } catch (error) {
-    console.error('Erreur traitement demande:', error);
-    reply.redirect('/?auth=error');
+    console.error('❌ Erreur callback OAuth:', error);
+    reply.redirect('/?auth=error&message=callback_processing_error');
   }
 });
 
