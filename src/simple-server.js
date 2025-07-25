@@ -1,8 +1,22 @@
 import Fastify from 'fastify';
 import staticPlugin from '@fastify/static';
+import sessionPlugin from '@fastify/session';
+import cookiePlugin from '@fastify/cookie';
 import path from 'path';
+import { authService } from './auth-service.js';
 
 const app = Fastify({ logger: true });
+
+// Enregistrer les plugins de cookies et session
+app.register(cookiePlugin);
+app.register(sessionPlugin, {
+  secret: process.env.SESSION_SECRET || 'flowforge-session-secret-key-change-in-production',
+  cookie: {
+    secure: process.env.NODE_ENV === 'production',
+    httpOnly: true,
+    maxAge: 7 * 24 * 60 * 60 * 1000 // 7 jours
+  }
+});
 
 // Servir les fichiers statiques depuis /static au lieu de /
 app.register(staticPlugin, {
