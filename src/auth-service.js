@@ -25,6 +25,275 @@ const transporter = nodemailer.createTransport({
 
 export class AuthService {
   
+  // ===== AUTHENTIFICATION EMAIL/MOT DE PASSE =====
+  
+  // Enregistrer un nouvel utilisateur par email
+  async registerWithEmail(userData) {
+    const { email, password, firstName, lastName } = userData;
+    
+    try {
+      // Vérifier si l'utilisateur existe déjà
+      const existingUser = await this.getUserByEmail(email);
+      if (existingUser) {
+        throw new Error('Un compte existe déjà avec cet email');
+      }
+      
+      // Hasher le mot de passe
+      const passwordHash = await bcrypt.hash(password, 12);
+      
+      // Générer token de vérification email
+      const verificationToken = uuidv4();
+      
+      // Créer l'utilisateur
+      const userId = uuidv4();
+      const result = await pool.query(`
+        INSERT INTO users (
+          id, email, first_name, last_name, password_hash, 
+          verification_token, auth_method, status, email_verified, created_at
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, 'email', 'pending', FALSE, NOW())
+        RETURNING *
+      `, [userId, email, firstName, lastName, passwordHash, verificationToken]);
+      
+      const user = result.rows[0];
+      
+      // Envoyer email de vérification
+      await this.sendVerificationEmail(user);
+      
+      console.log('✅ Utilisateur créé avec email:', email);
+      return {
+        user: {
+          id: user.id,
+          email: user.email,
+          name: `${user.first_name} ${user.last_name}`,
+          status: user.status
+        },
+        message: 'Compte créé ! Vérifiez votre email pour activer votre compte.'
+      };
+      
+    } catch (error) {
+      console.error('❌ Erreur enregistrement email:', error);
+      throw error;
+    }
+  }
+  
+  // Connexion avec email/mot de passe
+  async loginWithEmail(email, password) {
+    try {
+      const user = await pool.query(`
+        SELECT * FROM users 
+        WHERE email = $1 AND auth_method IN ('email', 'both') AND password_hash IS NOT NULL
+      `, [email]);
+      
+      if (user.rows.length === 0) {
+        throw new Error('Email ou mot de passe incorrect');
+      }
+      
+      const userData = user.rows[0];
+      
+      // Vérifier le mot de passe
+      const passwordValid = await bcrypt.compare(password, userData.password_hash);
+      if (!passwordValid) {
+        throw new Error('Email ou mot de passe incorrect');
+      }
+      
+      // Vérifier que l'email est vérifié
+      if (!userData.email_verified) {
+        throw new Error('Veuillez vérifier votre email avant de vous connecter');
+      }
+      
+      // Vérifier que le compte est actif
+      if (userData.status !== 'active') {
+        throw new Error('Votre compte n\'est pas encore activé');
+      }
+      
+      console.log('✅ Connexion email réussie:', email);
+      return userData;
+      
+    } catch (error) {
+      console.error('❌ Erreur connexion email:', error);
+      throw error;
+    }
+  }
+  
+  // Vérifier l'email avec le token
+  async verifyEmail(token) {
+    try {
+      const result = await pool.query(`
+        UPDATE users 
+        SET email_verified = TRUE, verification_token = NULL, status = 'active', updated_at = NOW()
+        WHERE verification_token = $1 AND email_verified = FALSE
+        RETURNING *
+      `, [token]);
+      
+      if (result.rows.length === 0) {
+        throw new Error('Token de vérification invalide ou expiré');
+      }
+      
+      const user = result.rows[0];
+      console.log('✅ Email vérifié avec succès:', user.email);
+      
+      return user;
+    } catch (error) {
+      console.error('❌ Erreur vérification email:', error);
+      throw error;
+    }
+  }
+  
+  // Demander reset mot de passe
+  async requestPasswordReset(email) {
+    try {
+      const resetToken = uuidv4();
+      const resetExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24h
+      
+      const result = await pool.query(`
+        UPDATE users 
+        SET reset_password_token = $1, reset_password_expires = $2, updated_at = NOW()
+        WHERE email = $3 AND auth_method IN ('email', 'both')
+        RETURNING *
+      `, [resetToken, resetExpires, email]);
+      
+      if (result.rows.length === 0) {
+        // Ne pas révéler si l'email existe ou non
+        return { message: 'Si cet email existe, vous recevrez un lien de réinitialisation' };
+      }
+      
+      const user = result.rows[0];
+      
+      // Envoyer email de reset
+      await this.sendPasswordResetEmail(user);
+      
+      console.log('✅ Email de reset envoyé:', email);
+      return { message: 'Email de réinitialisation envoyé' };
+      
+    } catch (error) {
+      console.error('❌ Erreur demande reset mot de passe:', error);
+      throw error;
+    }
+  }
+  
+  // Reset mot de passe avec token
+  async resetPassword(token, newPassword) {
+    try {
+      // Vérifier le token et qu'il n'est pas expiré
+      const result = await pool.query(`
+        SELECT * FROM users 
+        WHERE reset_password_token = $1 AND reset_password_expires > NOW()
+      `, [token]);
+      
+      if (result.rows.length === 0) {
+        throw new Error('Token de réinitialisation invalide ou expiré');
+      }
+      
+      const user = result.rows[0];
+      
+      // Hasher le nouveau mot de passe
+      const passwordHash = await bcrypt.hash(newPassword, 12);
+      
+      // Mettre à jour le mot de passe et supprimer le token
+      await pool.query(`
+        UPDATE users 
+        SET password_hash = $1, reset_password_token = NULL, reset_password_expires = NULL, updated_at = NOW()
+        WHERE id = $2
+      `, [passwordHash, user.id]);
+      
+      console.log('✅ Mot de passe réinitialisé:', user.email);
+      return { message: 'Mot de passe réinitialisé avec succès' };
+      
+    } catch (error) {
+      console.error('❌ Erreur reset mot de passe:', error);
+      throw error;
+    }
+  }
+  
+  // Envoyer email de vérification
+  async sendVerificationEmail(user) {
+    try {
+      const verificationUrl = `${config.baseUrl}/verify-email?token=${user.verification_token}`;
+      
+      const htmlContent = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: #1e40af;">🎉 Bienvenue sur FlowForge !</h2>
+          
+          <p>Bonjour ${user.first_name},</p>
+          
+          <p>Merci de vous être inscrit sur FlowForge ! Pour activer votre compte, veuillez cliquer sur le lien ci-dessous :</p>
+          
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${verificationUrl}" 
+               style="background: #1e40af; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; display: inline-block;">
+              ✅ Vérifier mon email
+            </a>
+          </div>
+          
+          <p>Si le bouton ne fonctionne pas, copiez ce lien dans votre navigateur :</p>
+          <p style="word-break: break-all; background: #f8f9fa; padding: 10px; border-radius: 5px;">${verificationUrl}</p>
+          
+          <p style="color: #6b7280; font-size: 14px; margin-top: 30px;">
+            Ce lien expire dans 24h. Si vous n'avez pas créé de compte FlowForge, ignorez cet email.
+          </p>
+        </div>
+      `;
+      
+      await transporter.sendMail({
+        from: process.env.SMTP_FROM || process.env.SMTP_USER,
+        to: user.email,
+        subject: '🎉 Vérifiez votre email - FlowForge',
+        html: htmlContent
+      });
+      
+      console.log('✅ Email de vérification envoyé:', user.email);
+      
+    } catch (error) {
+      console.error('❌ Erreur envoi email vérification:', error);
+    }
+  }
+  
+  // Envoyer email de reset mot de passe
+  async sendPasswordResetEmail(user) {
+    try {
+      const resetUrl = `${config.baseUrl}/reset-password?token=${user.reset_password_token}`;
+      
+      const htmlContent = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: #dc2626;">🔒 Réinitialisation de mot de passe</h2>
+          
+          <p>Bonjour ${user.first_name},</p>
+          
+          <p>Vous avez demandé la réinitialisation de votre mot de passe FlowForge. Cliquez sur le lien ci-dessous :</p>
+          
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${resetUrl}" 
+               style="background: #dc2626; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; display: inline-block;">
+              🔑 Réinitialiser mon mot de passe
+            </a>
+          </div>
+          
+          <p>Si le bouton ne fonctionne pas, copiez ce lien dans votre navigateur :</p>
+          <p style="word-break: break-all; background: #f8f9fa; padding: 10px; border-radius: 5px;">${resetUrl}</p>
+          
+          <p style="color: #6b7280; font-size: 14px; margin-top: 30px;">
+            Ce lien expire dans 24h. Si vous n'avez pas demandé cette réinitialisation, ignorez cet email.
+          </p>
+        </div>
+      `;
+      
+      await transporter.sendMail({
+        from: process.env.SMTP_FROM || process.env.SMTP_USER,
+        to: user.email,
+        subject: '🔒 Réinitialisation de mot de passe - FlowForge',
+        html: htmlContent
+      });
+      
+      console.log('✅ Email de reset envoyé:', user.email);
+      
+    } catch (error) {
+      console.error('❌ Erreur envoi email reset:', error);
+    }
+  }
+
+  // ===== AUTHENTIFICATION GOOGLE OAUTH =====
+  
   // Générer URL d'authentification Google
   generateGoogleAuthUrl(type = 'login') {
     const scopes = [

@@ -272,26 +272,95 @@ app.get('/', async (request, reply) => {
             <p style="color: #6b7280; margin-bottom: 2rem;">Connectez-vous avec votre compte Google</p>
             
             <div class="auth-form">
-                <div class="auth-buttons">
-                    <button onclick="loginWithGoogle()" class="google-btn login-btn">
-                        <svg width="20" height="20" viewBox="0 0 24 24">
-                            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                            <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-                        </svg>
-                        Se connecter
+                <!-- Onglets -->
+                <div style="display: flex; margin-bottom: 2rem; border-bottom: 2px solid #e2e8f0;">
+                    <button onclick="showAuthTab('google')" id="googleTab" class="auth-tab active-tab" style="flex: 1; padding: 1rem; border: none; background: none; font-weight: 600; color: #1e40af; cursor: pointer; border-bottom: 2px solid #1e40af;">
+                        Google OAuth
                     </button>
+                    <button onclick="showAuthTab('email')" id="emailTab" class="auth-tab" style="flex: 1; padding: 1rem; border: none; background: none; font-weight: 600; color: #64748b; cursor: pointer; border-bottom: 2px solid transparent;">
+                        Email / Mot de passe
+                    </button>
+                </div>
+                
+                <!-- Google OAuth -->
+                <div id="googleAuth" class="auth-method">
+                    <div class="auth-buttons">
+                        <button onclick="loginWithGoogle()" class="google-btn login-btn">
+                            <svg width="20" height="20" viewBox="0 0 24 24">
+                                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                            </svg>
+                            Se connecter avec Google
+                        </button>
+                        
+                        <button onclick="requestAccessWithGoogle()" class="google-btn request-btn">
+                            <svg width="20" height="20" viewBox="0 0 24 24">
+                                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                            </svg>
+                            Demander l'acces avec Google
+                        </button>
+                    </div>
+                    <p style="font-size: 0.9rem; color: #6b7280; margin-top: 1rem; text-align: center;">
+                        Nouveau ? Demandez l'acces et un administrateur examinera votre demande.
+                    </p>
+                </div>
+                
+                <!-- Email/Password Auth -->
+                <div id="emailAuth" class="auth-method" style="display: none;">
+                    <!-- Login Form -->
+                    <div id="loginForm" class="email-form">
+                        <h3 style="margin-bottom: 1rem; color: #1e40af;">Connexion</h3>
+                        <form onsubmit="loginWithEmail(event)" style="display: flex; flex-direction: column; gap: 1rem;">
+                            <input type="email" name="email" placeholder="Email" required style="padding: 0.75rem; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 1rem;">
+                            <input type="password" name="password" placeholder="Mot de passe" required style="padding: 0.75rem; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 1rem;">
+                            <button type="submit" style="background: #1e40af; color: white; padding: 0.75rem; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;">
+                                Se connecter
+                            </button>
+                        </form>
+                        <p style="text-align: center; margin-top: 1rem;">
+                            <a href="#" onclick="showEmailForm('register')" style="color: #1e40af;">Creer un compte</a> | 
+                            <a href="#" onclick="showEmailForm('forgot')" style="color: #dc2626;">Mot de passe oublie ?</a>
+                        </p>
+                    </div>
                     
-                    <button onclick="requestAccessWithGoogle()" class="google-btn request-btn">
-                        <svg width="20" height="20" viewBox="0 0 24 24">
-                            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                            <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-                        </svg>
-                        Demander l'accès
-                    </button>
+                    <!-- Register Form -->
+                    <div id="registerForm" class="email-form" style="display: none;">
+                        <h3 style="margin-bottom: 1rem; color: #10b981;">Creer un compte</h3>
+                        <form onsubmit="registerWithEmail(event)" style="display: flex; flex-direction: column; gap: 1rem;">
+                            <div style="display: flex; gap: 1rem;">
+                                <input type="text" name="firstName" placeholder="Prenom" required style="flex: 1; padding: 0.75rem; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 1rem;">
+                                <input type="text" name="lastName" placeholder="Nom" required style="flex: 1; padding: 0.75rem; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 1rem;">
+                            </div>
+                            <input type="email" name="email" placeholder="Email" required style="padding: 0.75rem; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 1rem;">
+                            <input type="password" name="password" placeholder="Mot de passe (min 8 caracteres)" required minlength="8" style="padding: 0.75rem; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 1rem;">
+                            <input type="password" name="confirmPassword" placeholder="Confirmer le mot de passe" required style="padding: 0.75rem; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 1rem;">
+                            <button type="submit" style="background: #10b981; color: white; padding: 0.75rem; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;">
+                                Creer mon compte
+                            </button>
+                        </form>
+                        <p style="text-align: center; margin-top: 1rem;">
+                            <a href="#" onclick="showEmailForm('login')" style="color: #1e40af;">Deja un compte ? Se connecter</a>
+                        </p>
+                    </div>
+                    
+                    <!-- Forgot Password Form -->
+                    <div id="forgotForm" class="email-form" style="display: none;">
+                        <h3 style="margin-bottom: 1rem; color: #dc2626;">Mot de passe oublie</h3>
+                        <form onsubmit="forgotPassword(event)" style="display: flex; flex-direction: column; gap: 1rem;">
+                            <input type="email" name="email" placeholder="Votre email" required style="padding: 0.75rem; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 1rem;">
+                            <button type="submit" style="background: #dc2626; color: white; padding: 0.75rem; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;">
+                                Envoyer le lien de reinitialisation
+                            </button>
+                        </form>
+                        <p style="text-align: center; margin-top: 1rem;">
+                            <a href="#" onclick="showEmailForm('login')" style="color: #1e40af;">Retour a la connexion</a>
+                        </p>
+                    </div>
                 </div>
                 
                 <p style="font-size: 0.9rem; color: #6b7280; margin-top: 1rem;">
@@ -316,6 +385,157 @@ app.get('/', async (request, reply) => {
     </div>
     
     <script>
+        // ===== GESTION DES ONGLETS =====
+        function showAuthTab(tab) {
+            // Reset tabs
+            document.getElementById('googleTab').classList.remove('active-tab');
+            document.getElementById('emailTab').classList.remove('active-tab');
+            document.getElementById('googleTab').style.color = '#64748b';
+            document.getElementById('emailTab').style.color = '#64748b';
+            document.getElementById('googleTab').style.borderBottom = '2px solid transparent';
+            document.getElementById('emailTab').style.borderBottom = '2px solid transparent';
+            
+            // Hide auth methods
+            document.getElementById('googleAuth').style.display = 'none';
+            document.getElementById('emailAuth').style.display = 'none';
+            
+            // Show selected tab
+            if (tab === 'google') {
+                document.getElementById('googleTab').classList.add('active-tab');
+                document.getElementById('googleTab').style.color = '#1e40af';
+                document.getElementById('googleTab').style.borderBottom = '2px solid #1e40af';
+                document.getElementById('googleAuth').style.display = 'block';
+            } else {
+                document.getElementById('emailTab').classList.add('active-tab');
+                document.getElementById('emailTab').style.color = '#1e40af';
+                document.getElementById('emailTab').style.borderBottom = '2px solid #1e40af';
+                document.getElementById('emailAuth').style.display = 'block';
+            }
+        }
+        
+        // ===== GESTION DES FORMULAIRES EMAIL =====
+        function showEmailForm(form) {
+            // Hide all forms
+            document.getElementById('loginForm').style.display = 'none';
+            document.getElementById('registerForm').style.display = 'none';
+            document.getElementById('forgotForm').style.display = 'none';
+            
+            // Show selected form
+            document.getElementById(form + 'Form').style.display = 'block';
+        }
+        
+        // ===== AUTHENTIFICATION EMAIL =====
+        async function loginWithEmail(event) {
+            event.preventDefault();
+            const formData = new FormData(event.target);
+            const authMessage = document.getElementById('authMessage');
+            
+            authMessage.style.display = 'block';
+            authMessage.className = 'auth-message info';
+            authMessage.textContent = 'Connexion en cours...';
+            
+            try {
+                const response = await fetch('/auth/email/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email: formData.get('email'),
+                        password: formData.get('password')
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    authMessage.className = 'auth-message success';
+                    authMessage.textContent = '✅ Connexion reussie ! Redirection...';
+                    setTimeout(() => window.location.href = '/dashboard', 1000);
+                } else {
+                    authMessage.className = 'auth-message error';
+                    authMessage.textContent = '❌ ' + result.error;
+                }
+            } catch (error) {
+                authMessage.className = 'auth-message error';
+                authMessage.textContent = '❌ Erreur de connexion. Reessayez.';
+            }
+        }
+        
+        async function registerWithEmail(event) {
+            event.preventDefault();
+            const formData = new FormData(event.target);
+            const authMessage = document.getElementById('authMessage');
+            
+            // Verification mot de passe
+            if (formData.get('password') !== formData.get('confirmPassword')) {
+                authMessage.style.display = 'block';
+                authMessage.className = 'auth-message error';
+                authMessage.textContent = '❌ Les mots de passe ne correspondent pas';
+                return;
+            }
+            
+            authMessage.style.display = 'block';
+            authMessage.className = 'auth-message info';
+            authMessage.textContent = 'Creation du compte...';
+            
+            try {
+                const response = await fetch('/auth/email/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email: formData.get('email'),
+                        password: formData.get('password'),
+                        firstName: formData.get('firstName'),
+                        lastName: formData.get('lastName')
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    authMessage.className = 'auth-message success';
+                    authMessage.textContent = '✅ ' + result.message;
+                    showEmailForm('login');
+                } else {
+                    authMessage.className = 'auth-message error';
+                    authMessage.textContent = '❌ ' + result.error;
+                }
+            } catch (error) {
+                authMessage.className = 'auth-message error';
+                authMessage.textContent = '❌ Erreur lors de la creation. Reessayez.';
+            }
+        }
+        
+        async function forgotPassword(event) {
+            event.preventDefault();
+            const formData = new FormData(event.target);
+            const authMessage = document.getElementById('authMessage');
+            
+            authMessage.style.display = 'block';
+            authMessage.className = 'auth-message info';
+            authMessage.textContent = 'Envoi du lien de reinitialisation...';
+            
+            try {
+                const response = await fetch('/auth/email/forgot-password', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email: formData.get('email')
+                    })
+                });
+                
+                const result = await response.json();
+                
+                authMessage.className = 'auth-message info';
+                authMessage.textContent = '📧 ' + result.message;
+                showEmailForm('login');
+                
+            } catch (error) {
+                authMessage.className = 'auth-message error';
+                authMessage.textContent = '❌ Erreur lors de l\\'envoi. Reessayez.';
+            }
+        }
+        
+        // ===== AUTHENTIFICATION GOOGLE =====
         // Connexion pour utilisateurs existants
         function loginWithGoogle() {
             const authMessage = document.getElementById('authMessage');
@@ -363,6 +583,10 @@ app.get('/', async (request, reply) => {
                 case 'logged_out':
                     authMessage.className = 'auth-message info';
                     authMessage.textContent = '👋 Vous avez ete deconnecte avec succes.';
+                    break;
+                case 'verified':
+                    authMessage.className = 'auth-message success';
+                    authMessage.textContent = '✅ Email verifie ! Vous pouvez maintenant vous connecter.';
                     break;
                 case 'error':
                     authMessage.className = 'auth-message error';
@@ -438,6 +662,252 @@ app.get('/test/db', async () => {
       error: error.message,
       code: error.code
     };
+  }
+});
+
+// ===== ROUTES D'AUTHENTIFICATION EMAIL =====
+
+// Enregistrement par email
+app.post('/auth/email/register', async (request, reply) => {
+  try {
+    const { email, password, firstName, lastName } = request.body;
+    
+    // Validation basique
+    if (!email || !password || !firstName || !lastName) {
+      return reply.code(400).send({ error: 'Tous les champs sont requis' });
+    }
+    
+    if (password.length < 8) {
+      return reply.code(400).send({ error: 'Le mot de passe doit contenir au moins 8 caractères' });
+    }
+    
+    const result = await authService.registerWithEmail({
+      email,
+      password,
+      firstName,
+      lastName
+    });
+    
+    reply.send(result);
+    
+  } catch (error) {
+    console.error('❌ Erreur enregistrement:', error);
+    reply.code(400).send({ error: error.message });
+  }
+});
+
+// Connexion par email
+app.post('/auth/email/login', async (request, reply) => {
+  try {
+    const { email, password } = request.body;
+    
+    if (!email || !password) {
+      return reply.code(400).send({ error: 'Email et mot de passe requis' });
+    }
+    
+    const user = await authService.loginWithEmail(email, password);
+    
+    // Créer session
+    const sessionToken = await authService.createUserSession(user);
+    request.session.sessionToken = sessionToken;
+    request.session.user = {
+      id: user.id,
+      email: user.email,
+      name: `${user.first_name} ${user.last_name}`,
+      role: user.role
+    };
+    
+    reply.send({ 
+      success: true, 
+      message: 'Connexion réussie',
+      user: {
+        email: user.email,
+        name: `${user.first_name} ${user.last_name}`
+      }
+    });
+    
+  } catch (error) {
+    console.error('❌ Erreur connexion email:', error);
+    reply.code(400).send({ error: error.message });
+  }
+});
+
+// Mot de passe oublié
+app.post('/auth/email/forgot-password', async (request, reply) => {
+  try {
+    const { email } = request.body;
+    
+    if (!email) {
+      return reply.code(400).send({ error: 'Email requis' });
+    }
+    
+    const result = await authService.requestPasswordReset(email);
+    reply.send(result);
+    
+  } catch (error) {
+    console.error('❌ Erreur mot de passe oublié:', error);
+    reply.code(400).send({ error: error.message });
+  }
+});
+
+// Vérification email
+app.get('/verify-email', async (request, reply) => {
+  const { token } = request.query;
+  
+  if (!token) {
+    return reply.redirect('/?auth=error&message=missing_verification_token');
+  }
+  
+  try {
+    await authService.verifyEmail(token);
+    reply.redirect('/?auth=verified');
+  } catch (error) {
+    console.error('❌ Erreur vérification email:', error);
+    reply.redirect('/?auth=error&message=verification_failed');
+  }
+});
+
+// Page de réinitialisation mot de passe
+app.get('/reset-password', async (request, reply) => {
+  const { token } = request.query;
+  
+  if (!token) {
+    return reply.redirect('/?auth=error&message=missing_reset_token');
+  }
+  
+  const html = `
+  <!DOCTYPE html>
+  <html lang="fr">
+  <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Réinitialiser mot de passe - FlowForge</title>
+      <style>
+          body { 
+              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+              background: #ffffff;
+              margin: 0;
+              padding: 2rem;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              min-height: 100vh;
+          }
+          .container {
+              max-width: 400px;
+              width: 100%;
+              background: #f8faff;
+              padding: 2rem;
+              border-radius: 15px;
+              border: 2px solid #e0e7ff;
+              text-align: center;
+          }
+          h1 { color: #1e40af; margin-bottom: 1rem; }
+          form { display: flex; flex-direction: column; gap: 1rem; }
+          input { 
+              padding: 0.75rem; 
+              border: 2px solid #e2e8f0; 
+              border-radius: 8px; 
+              font-size: 1rem; 
+          }
+          button {
+              background: #dc2626;
+              color: white;
+              padding: 0.75rem;
+              border: none;
+              border-radius: 8px;
+              font-weight: 600;
+              cursor: pointer;
+          }
+          .message { 
+              padding: 1rem; 
+              border-radius: 8px; 
+              margin-bottom: 1rem; 
+              display: none; 
+          }
+          .error { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
+          .success { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
+      </style>
+  </head>
+  <body>
+      <div class="container">
+          <h1>🔑 Nouveau mot de passe</h1>
+          <div id="message" class="message"></div>
+          <form onsubmit="resetPassword(event)">
+              <input type="password" name="password" placeholder="Nouveau mot de passe" required minlength="8">
+              <input type="password" name="confirmPassword" placeholder="Confirmer le mot de passe" required>
+              <button type="submit">Réinitialiser mot de passe</button>
+          </form>
+          <p><a href="/" style="color: #1e40af;">Retour à l'accueil</a></p>
+      </div>
+      
+      <script>
+          async function resetPassword(event) {
+              event.preventDefault();
+              const formData = new FormData(event.target);
+              const message = document.getElementById('message');
+              
+              if (formData.get('password') !== formData.get('confirmPassword')) {
+                  message.className = 'message error';
+                  message.style.display = 'block';
+                  message.textContent = 'Les mots de passe ne correspondent pas';
+                  return;
+              }
+              
+              try {
+                  const response = await fetch('/auth/email/reset-password', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                          token: '${token}',
+                          password: formData.get('password')
+                      })
+                  });
+                  
+                  const result = await response.json();
+                  
+                  if (response.ok) {
+                      message.className = 'message success';
+                      message.textContent = '✅ ' + result.message;
+                      setTimeout(() => window.location.href = '/', 2000);
+                  } else {
+                      message.className = 'message error';
+                      message.textContent = '❌ ' + result.error;
+                  }
+                  message.style.display = 'block';
+                  
+              } catch (error) {
+                  message.className = 'message error';
+                  message.style.display = 'block';
+                  message.textContent = '❌ Erreur lors de la réinitialisation';
+              }
+          }
+      </script>
+  </body>
+  </html>`;
+  
+  reply.type('text/html').send(html);
+});
+
+// Réinitialisation mot de passe (POST)
+app.post('/auth/email/reset-password', async (request, reply) => {
+  try {
+    const { token, password } = request.body;
+    
+    if (!token || !password) {
+      return reply.code(400).send({ error: 'Token et mot de passe requis' });
+    }
+    
+    if (password.length < 8) {
+      return reply.code(400).send({ error: 'Le mot de passe doit contenir au moins 8 caractères' });
+    }
+    
+    const result = await authService.resetPassword(token, password);
+    reply.send(result);
+    
+  } catch (error) {
+    console.error('❌ Erreur reset mot de passe:', error);
+    reply.code(400).send({ error: error.message });
   }
 });
 

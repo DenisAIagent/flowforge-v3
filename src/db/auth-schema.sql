@@ -8,8 +8,14 @@ CREATE TABLE IF NOT EXISTS users (
     last_name VARCHAR(100) NOT NULL,
     picture TEXT,
     google_id VARCHAR(50) UNIQUE,
+    password_hash TEXT, -- Mot de passe hashé avec bcrypt
+    email_verified BOOLEAN DEFAULT FALSE, -- Vérification email
+    verification_token VARCHAR(255) UNIQUE, -- Token de vérification email
+    reset_password_token VARCHAR(255) UNIQUE, -- Token reset mot de passe
+    reset_password_expires TIMESTAMP WITH TIME ZONE, -- Expiration token reset
+    auth_method VARCHAR(20) DEFAULT 'email' CHECK (auth_method IN ('email', 'google', 'both')),
     role VARCHAR(20) DEFAULT 'user' CHECK (role IN ('admin', 'user')),
-    status VARCHAR(20) DEFAULT 'active' CHECK (status IN ('active', 'inactive', 'banned')),
+    status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('active', 'inactive', 'banned', 'pending')),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -43,6 +49,9 @@ CREATE TABLE IF NOT EXISTS user_sessions (
 -- Index pour les performances
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 CREATE INDEX IF NOT EXISTS idx_users_google_id ON users(google_id);
+CREATE INDEX IF NOT EXISTS idx_users_verification_token ON users(verification_token);
+CREATE INDEX IF NOT EXISTS idx_users_reset_token ON users(reset_password_token);
+CREATE INDEX IF NOT EXISTS idx_users_status ON users(status);
 CREATE INDEX IF NOT EXISTS idx_access_requests_status ON access_requests(status);
 CREATE INDEX IF NOT EXISTS idx_access_requests_email ON access_requests(email);
 CREATE INDEX IF NOT EXISTS idx_user_sessions_token ON user_sessions(token);

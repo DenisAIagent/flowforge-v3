@@ -9,7 +9,8 @@
     "dev": "NODE_ENV=development nodemon src/server.js",
     "start:old": "node src/index.js",
     "test:startup": "node test-startup.js",
-    "db:init": "node init-db.js"
+    "db:init": "node init-db.js",
+    "db:migrate-email": "node migrate-auth-email.js"
   },
   "dependencies": {
     "fastify": "^4.0.0",
