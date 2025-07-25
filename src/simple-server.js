@@ -652,6 +652,14 @@ app.get('/dashboard', async (request, reply) => {
   reply.type('text/html').send(html);
 });
 
+// Route de déconnexion
+app.get('/logout', async (request, reply) => {
+  if (request.session) {
+    request.session.destroy();
+  }
+  reply.redirect('/?auth=logged_out');
+});
+
 // Routes pour les agents IA (version simple)
 app.get('/v1/agents', async () => {
   return {

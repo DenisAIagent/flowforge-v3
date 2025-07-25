@@ -1,6 +1,5 @@
 import pg from 'pg';
 import { config } from '../config.js';
-import { logger } from '../utils/logger.js';
 
 const { Pool } = pg;
 
@@ -17,22 +16,22 @@ const pool = new Pool(poolConfig);
 
 // Gestion des erreurs de connexion
 pool.on('error', (err) => {
-  logger.error({ error: err }, 'Erreur inattendue sur le pool de base de données');
+  console.error('❌ Erreur inattendue sur le pool de base de données:', err);
 });
 
 pool.on('connect', () => {
-  logger.info('Nouvelle connexion établie avec PostgreSQL');
+  console.log('✅ Nouvelle connexion établie avec PostgreSQL');
 });
 
 // Test de connexion au démarrage (asynchrone)
 pool.query('SELECT NOW()')
   .then(() => {
-    logger.info('✅ Connexion PostgreSQL testée avec succès');
+    console.log('✅ Connexion PostgreSQL testée avec succès');
   })
   .catch(error => {
-    logger.error({ error }, '❌ Erreur de connexion PostgreSQL');
+    console.error('❌ Erreur de connexion PostgreSQL:', error.message);
     if (config.isProduction) {
-      logger.error('Application va s\'arrêter car impossible de se connecter à la base de données');
+      console.error('⚠️  Application va continuer mais les fonctionnalités DB seront indisponibles');
     }
   });
 

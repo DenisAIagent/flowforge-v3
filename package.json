@@ -8,16 +8,23 @@
     "start:complex": "node src/server.js",
     "dev": "NODE_ENV=development nodemon src/server.js",
     "start:old": "node src/index.js",
-    "test:startup": "node test-startup.js"
+    "test:startup": "node test-startup.js",
+    "db:init": "node init-db.js"
   },
   "dependencies": {
     "fastify": "^4.0.0",
     "@fastify/static": "^6.0.0",
+    "@fastify/session": "^10.0.0",
+    "@fastify/cookie": "^9.0.0",
     "node-fetch": "^3.0.0",
     "node-cron": "^3.0.0",
     "pino": "^8.0.0",
     "pg": "^8.0.0",
-    "dotenv": "^16.0.0"
+    "dotenv": "^16.0.0",
+    "googleapis": "^128.0.0",
+    "nodemailer": "^6.9.0",
+    "bcrypt": "^5.1.0",
+    "uuid": "^9.0.0"
   },
   "devDependencies": {
     "nodemon": "^2.0.0"
