@@ -10,6 +10,11 @@ app.register(staticPlugin, {
   prefix: '/static/'
 });
 
+// Route favicon pour éviter l'erreur 404
+app.get('/favicon.ico', async (request, reply) => {
+  reply.redirect('/static/images/logo.png');
+});
+
 // Route de santé simple
 app.get('/health', async () => {
   return {
@@ -345,41 +350,41 @@ app.get('/', async (request, reply) => {
             switch(authStatus) {
                 case 'pending':
                     authMessage.className = 'auth-message info';
-                    authMessage.textContent = '✉️ Demande envoyée ! Un administrateur va examiner votre demande et vous recevrez un email de confirmation.';
+                    authMessage.textContent = '✉️ Demande envoyee ! Un administrateur va examiner votre demande et vous recevrez un email de confirmation.';
                     break;
                 case 'approved':
                     authMessage.className = 'auth-message success';
-                    authMessage.textContent = '✅ Votre accès a été approuvé! Vous pouvez maintenant vous connecter.';
+                    authMessage.textContent = '✅ Votre acces a ete approuve! Vous pouvez maintenant vous connecter.';
                     break;
                 case 'rejected':
                     authMessage.className = 'auth-message error';
-                    authMessage.textContent = '❌ Votre demande d\'accès a été refusée. Contactez l\'administrateur pour plus d\'informations.';
+                    authMessage.textContent = '❌ Votre demande d\\'acces a ete refusee. Contactez l\\'administrateur pour plus d\\'informations.';
                     break;
                 case 'logged_out':
                     authMessage.className = 'auth-message info';
-                    authMessage.textContent = '👋 Vous avez été déconnecté avec succès.';
+                    authMessage.textContent = '👋 Vous avez ete deconnecte avec succes.';
                     break;
                 case 'error':
                     authMessage.className = 'auth-message error';
                     
                     switch(message) {
                         case 'oauth_not_configured':
-                            authMessage.innerHTML = '⚙️ <strong>Configuration requise:</strong><br/>• Configurez GOOGLE_CLIENT_ID et GOOGLE_CLIENT_SECRET<br/>• Voir SETUP.md pour les instructions complètes';
+                            authMessage.innerHTML = '⚙️ <strong>Configuration requise:</strong><br/>• Configurez GOOGLE_CLIENT_ID et GOOGLE_CLIENT_SECRET<br/>• Voir SETUP.md pour les instructions completes';
                             break;
                         case 'user_not_found':
-                            authMessage.textContent = '🔍 Utilisateur non trouvé. Demandez d\'abord l\'accès avec le bouton "Demander l\'accès".';
+                            authMessage.textContent = '🔍 Utilisateur non trouve. Demandez d\\'abord l\\'acces avec le bouton "Demander l\\'acces".';
                             break;
                         case 'account_inactive':
-                            authMessage.textContent = '⏳ Votre compte n\'est pas encore activé. Contactez l\'administrateur.';
+                            authMessage.textContent = '⏳ Votre compte n\\'est pas encore active. Contactez l\\'administrateur.';
                             break;
                         case 'session_expired':
-                            authMessage.textContent = '⏰ Votre session a expiré. Veuillez vous reconnecter.';
+                            authMessage.textContent = '⏰ Votre session a expire. Veuillez vous reconnecter.';
                             break;
                         case 'not_authenticated':
-                            authMessage.textContent = '🔐 Accès non autorisé. Veuillez vous connecter d\'abord.';
+                            authMessage.textContent = '🔐 Acces non autorise. Veuillez vous connecter d\\'abord.';
                             break;
                         default:
-                            authMessage.textContent = '⚠️ Erreur lors de l\'authentification. Vérifiez la configuration et réessayez.';
+                            authMessage.textContent = '⚠️ Erreur lors de l\\'authentification. Verifiez la configuration et reessayez.';
                     }
                     break;
             }
