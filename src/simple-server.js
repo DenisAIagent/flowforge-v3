@@ -156,6 +156,50 @@ app.get('/diagnostic-db', async (request, reply) => {
   }
 });
 
+// Route pour initialiser la DB via API
+app.post('/init-database', async (request, reply) => {
+  try {
+    console.log('🔧 Initialisation DB via API...');
+    
+    // Import dynamique pour éviter les erreurs
+    const fs = await import('fs');
+    const path = await import('path');
+    const { default: pool } = await import('./db/pool.js');
+    
+    // Lire le schéma
+    const schemaPath = path.join(process.cwd(), 'src/db/auth-schema.sql');
+    const schema = fs.readFileSync(schemaPath, 'utf8');
+    
+    // Exécuter le schéma
+    await pool.query(schema);
+    
+    // Vérifier les tables créées
+    const tables = await pool.query(`
+      SELECT table_name 
+      FROM information_schema.tables 
+      WHERE table_schema = 'public'
+      ORDER BY table_name
+    `);
+    
+    console.log('✅ DB initialisée via API');
+    
+    return {
+      status: 'success',
+      message: 'Base de données initialisée avec succès',
+      tables_created: tables.rows.map(r => r.table_name),
+      timestamp: new Date().toISOString()
+    };
+    
+  } catch (error) {
+    console.error('❌ Erreur init DB API:', error);
+    return reply.code(500).send({
+      status: 'error',
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
 // Route d'accueil avec HTML - Fond blanc, texte bleu, logo en gros
 app.get('/', async (request, reply) => {
   const html = `
