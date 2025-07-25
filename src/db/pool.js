@@ -1,5 +1,6 @@
 import pg from 'pg';
 import { config } from '../config.js';
+import { createRailwayPool } from './pool-railway.js';
 
 const { Pool } = pg;
 
@@ -20,15 +21,25 @@ console.log('🗄️ Configuration DB:', {
 let pool;
 
 if (config.databaseUrl) {
-  const poolConfig = {
-    connectionString: config.databaseUrl,
-    max: 20,
-    idleTimeoutMillis: 30000,
-    connectionTimeoutMillis: 2000,
-    ssl: config.isProduction ? { rejectUnauthorized: false } : false
-  };
+  // Utiliser pool spécialisée Railway en production
+  if (config.isProduction && config.isRailway) {
+    console.log('🚂 Utilisation Railway Pool spécialisée...');
+    pool = createRailwayPool();
+  }
+  
+  // Fallback vers pool standard si Railway pool échoue
+  if (!pool) {
+    console.log('🔄 Fallback vers pool standard...');
+    const poolConfig = {
+      connectionString: config.databaseUrl,
+      max: 20,
+      idleTimeoutMillis: 30000,
+      connectionTimeoutMillis: 10000,
+      ssl: config.isProduction ? { rejectUnauthorized: false } : false
+    };
 
-  pool = new Pool(poolConfig);
+    pool = new Pool(poolConfig);
+  }
 } else {
   // Pool mock si pas de DATABASE_URL
   console.warn('⚠️  Utilisation d\'une pool mock - DB indisponible');
