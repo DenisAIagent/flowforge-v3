@@ -41,6 +41,59 @@ app.get('/health', async () => {
   };
 });
 
+// Route de debug pour diagnostiquer les problèmes
+app.get('/debug', async () => {
+  return {
+    authService: typeof authService,
+    authServiceMethods: Object.getOwnPropertyNames(authService),
+    databaseUrl: process.env.DATABASE_URL ? 'configured' : 'missing',
+    encryptionKey: process.env.ENCRYPTION_KEY ? 'configured' : 'missing',
+    sessionSecret: process.env.SESSION_SECRET ? 'configured' : 'missing',
+    timestamp: new Date().toISOString()
+  };
+});
+
+// Route de test pour l'auth
+app.post('/test-auth', async (request, reply) => {
+  try {
+    console.log('🧪 Test auth - Body:', request.body);
+    console.log('🧪 Test auth - Headers:', request.headers);
+    
+    const { email, password, firstName, lastName } = request.body || {};
+    
+    return {
+      received: { email, firstName, lastName, passwordLength: password?.length },
+      authServiceAvailable: typeof authService !== 'undefined',
+      timestamp: new Date().toISOString()
+    };
+  } catch (error) {
+    console.error('❌ Test auth error:', error);
+    return reply.code(500).send({ error: error.message });
+  }
+});
+
+// Route de test DB
+app.get('/test-db', async (request, reply) => {
+  try {
+    // Import pool dynamiquement pour éviter les erreurs d'import
+    const { default: pool } = await import('./db/pool.js');
+    
+    const result = await pool.query('SELECT NOW() as current_time, version() as db_version');
+    return {
+      status: 'DB connected',
+      data: result.rows[0],
+      timestamp: new Date().toISOString()
+    };
+  } catch (error) {
+    console.error('❌ Test DB error:', error);
+    return reply.code(500).send({ 
+      status: 'DB error',
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
 // Route d'accueil avec HTML - Fond blanc, texte bleu, logo en gros
 app.get('/', async (request, reply) => {
   const html = `
