@@ -17,12 +17,27 @@ export function createRailwayPool() {
   }
 
   console.log('🚀 Création pool Railway avec IPv4 forcé...');
+  console.log('🔍 DATABASE_URL complète:', config.databaseUrl);
   
   try {
     const url = new URL(config.databaseUrl);
+    console.log('🔍 URL parsée:', {
+      hostname: url.hostname,
+      port: url.port,
+      database: url.pathname.substring(1),
+      protocol: url.protocol
+    });
+    
+    // Tentative de forcer un hostname IPv4 si hostname contient des caractères IPv6
+    let finalHost = url.hostname;
+    if (url.hostname.includes(':')) {
+      console.log('⚠️  Hostname IPv6 détecté, tentative de résolution...');
+      // En dernier recours, essayer de mapper vers un nom de domaine
+      finalHost = url.hostname.replace(/\[|\]/g, ''); // Supprimer les crochets IPv6
+    }
     
     const poolConfig = {
-      host: url.hostname,
+      host: finalHost,
       port: parseInt(url.port) || 5432,
       database: url.pathname.substring(1),
       user: url.username,

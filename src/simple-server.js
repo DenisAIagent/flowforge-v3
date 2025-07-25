@@ -43,12 +43,32 @@ app.get('/health', async () => {
 
 // Route de debug pour diagnostiquer les problèmes
 app.get('/debug', async () => {
+  const dbUrl = process.env.DATABASE_URL;
+  let dbInfo = 'missing';
+  
+  if (dbUrl) {
+    try {
+      const url = new URL(dbUrl);
+      dbInfo = {
+        protocol: url.protocol,
+        hostname: url.hostname,
+        port: url.port,
+        pathname: url.pathname,
+        username: url.username ? 'présent' : 'absent'
+      };
+    } catch (error) {
+      dbInfo = 'url_invalide: ' + error.message;
+    }
+  }
+  
   return {
     authService: typeof authService,
     authServiceMethods: Object.getOwnPropertyNames(authService),
-    databaseUrl: process.env.DATABASE_URL ? 'configured' : 'missing',
+    databaseUrl: dbInfo,
     encryptionKey: process.env.ENCRYPTION_KEY ? 'configured' : 'missing',
     sessionSecret: process.env.SESSION_SECRET ? 'configured' : 'missing',
+    nodeEnv: process.env.NODE_ENV,
+    railwayEnv: process.env.RAILWAY_STATIC_URL ? 'present' : 'missing',
     timestamp: new Date().toISOString()
   };
 });
@@ -88,6 +108,48 @@ app.get('/test-db', async (request, reply) => {
     console.error('❌ Test DB error:', error);
     return reply.code(500).send({ 
       status: 'DB error',
+      error: error.message,
+      code: error.code,
+      address: error.address,
+      port: error.port,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// Route diagnostic Railway DB
+app.get('/diagnostic-db', async (request, reply) => {
+  const dbUrl = process.env.DATABASE_URL;
+  
+  if (!dbUrl) {
+    return {
+      status: 'error',
+      message: 'DATABASE_URL manquante',
+      solution: 'Ajoutez addon PostgreSQL sur Railway'
+    };
+  }
+  
+  try {
+    const url = new URL(dbUrl);
+    const isIPv6 = url.hostname.includes(':');
+    
+    return {
+      status: isIPv6 ? 'problème_ipv6' : 'ok',
+      database_info: {
+        protocol: url.protocol,
+        hostname: url.hostname,
+        port: url.port,
+        database: url.pathname.substring(1),
+        is_ipv6: isIPv6
+      },
+      solution: isIPv6 
+        ? 'Hostname IPv6 détecté - cause de ECONNREFUSED. Recréer addon PostgreSQL Railway.'
+        : 'Configuration semble correcte',
+      timestamp: new Date().toISOString()
+    };
+  } catch (error) {
+    return reply.code(500).send({
+      status: 'url_invalide',
       error: error.message,
       timestamp: new Date().toISOString()
     });
