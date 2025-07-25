@@ -10,7 +10,8 @@
     "start:old": "node src/index.js",
     "test:startup": "node test-startup.js",
     "db:init": "node init-db.js",
-    "db:migrate-email": "node migrate-auth-email.js"
+    "db:migrate-email": "node migrate-auth-email.js",
+    "db:create-superadmin": "node create-superadmin.js"
   },
   "dependencies": {
     "fastify": "^4.0.0",
