@@ -157,6 +157,52 @@ app.get('/diagnostic-db', async (request, reply) => {
 });
 
 // Route pour initialiser la DB via API
+// Reset complet de la base de données
+app.post('/reset-database', async (request, reply) => {
+  try {
+    console.log('🔄 Reset complet DB via API...');
+    
+    const fs = await import('fs');
+    const path = await import('path');
+    const { default: pool } = await import('./db/pool.js');
+    
+    // 1. Reset (supprimer tables)
+    const resetPath = path.join(process.cwd(), 'reset-db.sql');
+    const resetSql = fs.readFileSync(resetPath, 'utf8');
+    await pool.query(resetSql);
+    console.log('✅ Tables supprimées');
+    
+    // 2. Recréer (nouveau schéma)
+    const schemaPath = path.join(process.cwd(), 'src/db/auth-schema.sql');
+    const schema = fs.readFileSync(schemaPath, 'utf8');
+    await pool.query(schema);
+    console.log('✅ Tables recréées');
+    
+    // 3. Vérification
+    const tables = await pool.query(`
+      SELECT table_name 
+      FROM information_schema.tables 
+      WHERE table_schema = 'public'
+      ORDER BY table_name
+    `);
+    
+    return {
+      status: 'success',
+      message: 'Base de données réinitialisée avec succès',
+      tables_created: tables.rows.map(r => r.table_name),
+      timestamp: new Date().toISOString()
+    };
+    
+  } catch (error) {
+    console.error('❌ Erreur reset DB via API:', error.message);
+    return {
+      status: 'error',
+      error: error.message,
+      timestamp: new Date().toISOString()
+    };
+  }
+});
+
 app.post('/init-database', async (request, reply) => {
   try {
     console.log('🔧 Initialisation DB via API...');
