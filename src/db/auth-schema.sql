@@ -30,7 +30,7 @@ CREATE TABLE IF NOT EXISTS access_requests (
     status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     processed_at TIMESTAMP WITH TIME ZONE,
-    processed_by UUID REFERENCES users(id),
+    processed_by UUID,
     notes TEXT
 );
 
@@ -57,6 +57,10 @@ CREATE INDEX IF NOT EXISTS idx_access_requests_email ON access_requests(email);
 CREATE INDEX IF NOT EXISTS idx_user_sessions_token ON user_sessions(token);
 CREATE INDEX IF NOT EXISTS idx_user_sessions_expires ON user_sessions(expires_at);
 
+-- Ajouter la contrainte de clé étrangère après la création des tables
+ALTER TABLE access_requests ADD CONSTRAINT access_requests_processed_by_fkey 
+FOREIGN KEY (processed_by) REFERENCES users(id) ON DELETE SET NULL;
+
 -- Fonction pour mettre à jour updated_at automatiquement
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$
@@ -74,9 +78,8 @@ CREATE TRIGGER update_users_updated_at
     EXECUTE FUNCTION update_updated_at_column();
 
 -- Insérer un compte administrateur par défaut
-INSERT INTO users (id, email, first_name, last_name, role, status) 
+INSERT INTO users (email, first_name, last_name, role, status) 
 VALUES (
-    'admin-' || gen_random_uuid(),
     'admin@flowforge.com',
     'Administrateur',
     'FlowForge',
