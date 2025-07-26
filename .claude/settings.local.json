@@ -19,7 +19,8 @@
       "Bash(git remote add:*)",
       "Bash(node:*)",
       "Bash(npm start)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(npm run:*)"
     ],
     "deny": []
   }

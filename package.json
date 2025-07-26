@@ -16,7 +16,8 @@
     "postbuild": "npm run railway:setup",
     "test:db": "node test-database.js",
     "fix:railway-db": "node fix-railway-db.js",
-    "db:init-manual": "node init-db-manual.js"
+    "db:init-manual": "node init-db-manual.js",
+    "db:reset": "node reset-and-init-db.js"
   },
   "dependencies": {
     "fastify": "^4.0.0",
